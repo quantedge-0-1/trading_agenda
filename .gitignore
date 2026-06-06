@@ -12,3 +12,5 @@ ss_*.mjs
 ss_*.png
 make_icons.mjs
 ss*.mjs
+
+.vercel
