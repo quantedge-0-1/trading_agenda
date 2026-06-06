@@ -342,9 +342,17 @@ export default function Home() {
                       </div>
                     ))}
                   </div>
-                  <p style={{ margin: 0, fontSize: 11, fontWeight: 700, color: fbBadgeColor, fontFamily: 'JetBrains Mono, monospace' }}>
+                  <p style={{ margin: '0 0 12px', fontSize: 11, fontWeight: 700, color: fbBadgeColor, fontFamily: 'JetBrains Mono, monospace' }}>
                     SORPRESA: {fbSp >= 0 ? '+' : ''}{fbSp.toFixed(2)}% {surpriseBadge(fbLabel)}
                   </p>
+                  {lr.usd_impact_score != null && (
+                    <div>
+                      <ImpactBar label="USD"  score={lr.usd_impact_score} />
+                      <ImpactBar label="XAU"  score={lr.gold_impact_score} />
+                      <ImpactBar label="BOND" score={lr.bond_impact_score} />
+                      <ImpactBar label="RISK" score={lr.risk_sentiment_score} />
+                    </div>
+                  )}
                 </div>
               </div>
             )

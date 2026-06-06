@@ -176,11 +176,15 @@ export const WEEKLY_PLAN = {
   // Último dato macro relevante — se sobreescribe por terminal cuando conectado
   last_release: {
     event:    "Non-Farm Payrolls (May)",
-    date:     "Jun 5, 2026",
+    date:     "Jun 6, 2026",
     actual:   172,
     forecast: 85,
     previous: 147,
     unit:     "K",
+    usd_impact_score:     100,
+    gold_impact_score:    -80,
+    bond_impact_score:    -70,
+    risk_sentiment_score:  60,
   },
 
   key_levels: {
