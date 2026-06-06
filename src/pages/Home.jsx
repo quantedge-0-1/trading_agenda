@@ -39,25 +39,33 @@ function biasStyle(val) {
   return '#ffcc00'
 }
 
-// Implied USD/XAU direction from surprise_label
-function surpriseImplication(surprisePct) {
-  if (surprisePct == null) return { usd: 'NEUTRAL', xau: 'NEUTRAL' }
-  if (surprisePct > 10)  return { usd: 'ALCISTA',  xau: 'BAJISTA' }
-  if (surprisePct > 3)   return { usd: 'ALCISTA',  xau: 'BAJISTA' }
-  if (surprisePct < -10) return { usd: 'BAJISTA',  xau: 'ALCISTA' }
-  if (surprisePct < -3)  return { usd: 'BAJISTA',  xau: 'ALCISTA' }
-  return { usd: 'NEUTRAL', xau: 'NEUTRAL' }
-}
-
 function surpriseBadge(label) {
   const map = {
-    large_beat: '▲▲ BEAT FUERTE',
+    large_beat: '▲▲ LARGE BEAT',
     beat:       '▲ BEAT',
-    in_line:    '◆ INLINE',
+    in_line:    '→ IN LINE',
     miss:       '▼ MISS',
-    large_miss: '▼▼ MISS FUERTE',
+    large_miss: '▼▼ LARGE MISS',
   }
   return map[label] ?? label
+}
+
+function ImpactBar({ label, score }) {
+  if (score == null) return null
+  const pct      = Math.min(100, Math.abs(score))
+  const positive = score >= 0
+  const color    = positive ? '#00ff88' : '#ff3355'
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 5 }}>
+      <span style={{ width: 30, color: '#3a4a5a', fontSize: 9, textTransform: 'uppercase', letterSpacing: '0.08em', flexShrink: 0, fontFamily: 'Inter, sans-serif' }}>{label}</span>
+      <div style={{ flex: 1, height: 3, background: '#1a2535', position: 'relative', overflow: 'hidden' }}>
+        <div style={{ position: 'absolute', left: 0, top: 0, height: '100%', width: `${pct}%`, background: color, transition: 'width 0.4s ease-out' }} />
+      </div>
+      <span style={{ width: 36, textAlign: 'right', color, fontSize: 10, fontWeight: 700, fontFamily: 'JetBrains Mono, monospace', flexShrink: 0 }}>
+        {positive ? '+' : ''}{score}
+      </span>
+    </div>
+  )
 }
 
 export default function Home() {
@@ -280,65 +288,97 @@ export default function Home() {
           </div>
         </div>
 
-        {/* ── Último Release Terminal (datos reales del terminal) ─────────── */}
-        {lastRelease && (
-          <div style={{ background: '#111820', border: '1px solid #1a2535', borderLeft: '2px solid #00ff88' }}>
-            <div style={{ padding: '7px 12px', borderBottom: '1px solid #1a2535', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <span style={{ color: '#3a4a5a', fontSize: 9, textTransform: 'uppercase', letterSpacing: '0.12em', ...inter }}>ÚLTIMO RELEASE — TERMINAL</span>
-              <span style={{ color: '#00ff88', fontSize: 9, fontWeight: 700, ...inter }}>● LIVE</span>
-            </div>
-            <div style={{ padding: '10px 12px' }}>
-              {/* Event name + timestamp */}
-              <p style={{ margin: '0 0 2px', fontSize: 11, fontWeight: 700, color: '#e8edf2' }}>
-                {lastRelease.event_name}
-              </p>
-              <p style={{ margin: '0 0 8px', fontSize: 9, color: '#3a4a5a', ...inter }}>
-                {lastRelease.event_at ? new Date(lastRelease.event_at).toLocaleString('es', {
-                  month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit',
-                }) + ' ET' : ''}
-                {lastRelease.currency ? ` · ${lastRelease.currency}` : ''}
-              </p>
+        {/* ── ÚLTIMO DATO PUBLICADO ────────────────────────── */}
+        {(() => {
+          const cacheAge = terminalData?.ts
+            ? (() => {
+                const m = Math.round((Date.now() - terminalData.ts) / 60000)
+                return m < 60 ? ` · ${m}m` : ` · ${Math.round(m / 60)}h`
+              })()
+            : ''
 
-              {/* Anterior / Previsto / Actual grid */}
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 4, marginBottom: 8 }}>
-                {[
-                  ['Anterior', lastRelease.previous, '#7a8a9a'],
-                  ['Previsto', lastRelease.forecast,  '#ffcc00'],
-                  ['Actual',   lastRelease.actual,    (lastRelease.surprise_pct ?? 0) >= 0 ? '#00ff88' : '#ff3355'],
-                ].map(([label, value, color]) => (
-                  <div key={label} style={{ textAlign: 'center', padding: '6px 4px', background: '#060a0f', border: '1px solid #1a2535' }}>
-                    <p style={{ margin: '0 0 2px', fontSize: 8, color: '#3a4a5a', textTransform: 'uppercase', letterSpacing: '0.08em', ...inter }}>{label}</p>
-                    <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color }}>
-                      {value != null ? `${value}${lastRelease.unit ?? ''}` : '—'}
+          if (!lastRelease) {
+            return (
+              <div style={{ background: '#111820', border: '1px solid #1a2535' }}>
+                <div style={{ padding: '7px 12px', borderBottom: '1px solid #1a2535', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span style={{ color: '#3a4a5a', fontSize: 9, textTransform: 'uppercase', letterSpacing: '0.12em', ...inter }}>ÚLTIMO DATO PUBLICADO</span>
+                  <span style={{ fontSize: 9, color: '#3a4a5a', ...inter }}>—</span>
+                </div>
+                <div style={{ padding: '20px 12px', textAlign: 'center' }}>
+                  <p style={{ margin: '0 0 4px', fontSize: 11, color: '#3a4a5a', ...inter }}>Sin datos publicados hoy</p>
+                  {WEEKLY_PLAN.high_impact_events?.[0] && (
+                    <p style={{ margin: 0, fontSize: 9, color: '#3a4a5a', ...inter }}>
+                      Próximo: {WEEKLY_PLAN.high_impact_events[0].event}
                     </p>
-                  </div>
-                ))}
+                  )}
+                </div>
+              </div>
+            )
+          }
+
+          const sp         = lastRelease.surprise_pct
+          const badgeColor = sp == null ? '#7a8a9a' : sp >= 3 ? '#00ff88' : sp <= -3 ? '#ff3355' : '#7a8a9a'
+          const actualColor = sp == null ? '#e8edf2' : sp > 0 ? '#00ff88' : sp < 0 ? '#ff3355' : '#7a8a9a'
+          const eventDate  = lastRelease.event_at
+            ? new Date(lastRelease.event_at).toLocaleDateString('es', { month: 'short', day: 'numeric' })
+            : ''
+
+          return (
+            <div style={{ background: '#111820', border: '1px solid #1a2535', borderLeft: `2px solid ${badgeColor}` }}>
+              {/* Header */}
+              <div style={{ padding: '7px 12px', borderBottom: '1px solid #1a2535', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span style={{ color: '#3a4a5a', fontSize: 9, textTransform: 'uppercase', letterSpacing: '0.12em', ...inter }}>ÚLTIMO DATO PUBLICADO</span>
+                <span style={{ fontSize: 9, fontWeight: 700, color: isConnected ? '#00ff88' : '#ffcc00', ...inter }}>
+                  {isConnected ? '● LIVE' : `◈ CACHÉ${cacheAge}`}
+                </span>
               </div>
 
-              {/* Surprise + implied SMC direction */}
-              {lastRelease.surprise_pct != null && (() => {
-                const sp   = lastRelease.surprise_pct
-                const impl = surpriseImplication(sp)
-                const badgeColor = sp >= 3 ? '#00ff88' : sp <= -3 ? '#ff3355' : '#7a8a9a'
-                return (
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 6 }}>
-                    <span style={{ fontSize: 11, fontWeight: 700, color: badgeColor, fontFamily: 'JetBrains Mono, monospace' }}>
-                      {surpriseBadge(lastRelease.surprise_label)} {sp >= 0 ? '+' : ''}{sp.toFixed(1)}%
-                    </span>
-                    <div style={{ display: 'flex', gap: 10 }}>
-                      <span style={{ fontSize: 9, color: '#7a8a9a', ...inter }}>
-                        USD <span style={{ color: biasStyle(impl.usd), fontWeight: 700 }}>{impl.usd}</span>
-                      </span>
-                      <span style={{ fontSize: 9, color: '#7a8a9a', ...inter }}>
-                        XAU <span style={{ color: biasStyle(impl.xau), fontWeight: 700 }}>{impl.xau}</span>
-                      </span>
+              <div style={{ padding: '10px 12px' }}>
+                {/* Event name + date */}
+                <p style={{ margin: '0 0 1px', fontSize: 12, fontWeight: 700, color: '#e8edf2' }}>
+                  {lastRelease.event_name}
+                </p>
+                <p style={{ margin: '0 0 10px', fontSize: 9, color: '#3a4a5a', ...inter }}>
+                  {eventDate}{lastRelease.currency ? ` · ${lastRelease.currency}` : ''}
+                  {lastRelease.category ? ` · ${lastRelease.category}` : ''}
+                </p>
+
+                {/* ANTERIOR / PREVISTO / ACTUAL grid */}
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 4, marginBottom: 10 }}>
+                  {[
+                    ['ANTERIOR', lastRelease.previous, '#7a8a9a'],
+                    ['PREVISTO', lastRelease.forecast,  '#ffcc00'],
+                    ['ACTUAL',   lastRelease.actual,    actualColor],
+                  ].map(([label, value, color]) => (
+                    <div key={label} style={{ textAlign: 'center', padding: '7px 4px', background: '#060a0f', border: '1px solid #1a2535' }}>
+                      <p style={{ margin: '0 0 3px', fontSize: 8, color: '#3a4a5a', textTransform: 'uppercase', letterSpacing: '0.08em', ...inter }}>{label}</p>
+                      <p style={{ margin: 0, fontSize: 14, fontWeight: 700, color, fontFamily: 'JetBrains Mono, monospace' }}>
+                        {value != null ? `${value}${lastRelease.unit ?? ''}` : '—'}
+                      </p>
                     </div>
+                  ))}
+                </div>
+
+                {/* Surprise label */}
+                {sp != null && (
+                  <p style={{ margin: '0 0 12px', fontSize: 11, fontWeight: 700, color: badgeColor, fontFamily: 'JetBrains Mono, monospace' }}>
+                    SORPRESA: {sp >= 0 ? '+' : ''}{sp.toFixed(2)}% {surpriseBadge(lastRelease.surprise_label)}
+                  </p>
+                )}
+
+                {/* Impact bars */}
+                {lastRelease.usd_impact_score != null && (
+                  <div>
+                    <ImpactBar label="USD"  score={lastRelease.usd_impact_score} />
+                    <ImpactBar label="XAU"  score={lastRelease.gold_impact_score} />
+                    <ImpactBar label="BOND" score={lastRelease.bond_impact_score} />
+                    <ImpactBar label="RISK" score={lastRelease.risk_sentiment_score} />
                   </div>
-                )
-              })()}
+                )}
+              </div>
             </div>
-          </div>
-        )}
+          )
+        })()}
 
         {/* ── Session Bias ─────────────────────────────────── */}
         <div style={{ background: '#111820', border: '1px solid #1a2535' }}>
