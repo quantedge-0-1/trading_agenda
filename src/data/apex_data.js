@@ -181,10 +181,6 @@ export const WEEKLY_PLAN = {
     forecast: 85,
     previous: 147,
     unit:     "K",
-    usd_impact_score:     100,
-    gold_impact_score:    -80,
-    bond_impact_score:    -70,
-    risk_sentiment_score:  60,
   },
 
   key_levels: {

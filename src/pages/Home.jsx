@@ -298,61 +298,14 @@ export default function Home() {
             : ''
 
           if (!lastRelease) {
-            if (!lr) {
-              return (
-                <div style={{ background: '#111820', border: '1px solid #1a2535' }}>
-                  <div style={{ padding: '7px 12px', borderBottom: '1px solid #1a2535', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <span style={{ color: '#3a4a5a', fontSize: 9, textTransform: 'uppercase', letterSpacing: '0.12em', ...inter }}>ÚLTIMO DATO PUBLICADO</span>
-                    <span style={{ fontSize: 9, color: '#3a4a5a', ...inter }}>—</span>
-                  </div>
-                  <div style={{ padding: '20px 12px', textAlign: 'center' }}>
-                    <p style={{ margin: 0, fontSize: 11, color: '#3a4a5a', ...inter }}>Sin datos publicados hoy</p>
-                  </div>
-                </div>
-              )
-            }
-
-            const fbSp = lr.forecast !== 0
-              ? Math.round(((lr.actual - lr.forecast) / Math.abs(lr.forecast)) * 10000) / 100
-              : 0
-            const fbBadgeColor  = fbSp >= 3 ? '#00ff88' : fbSp <= -3 ? '#ff3355' : '#7a8a9a'
-            const fbActualColor = fbSp > 0 ? '#00ff88' : fbSp < 0 ? '#ff3355' : '#7a8a9a'
-            const fbLabel = fbSp > 10 ? 'large_beat' : fbSp > 3 ? 'beat' : fbSp < -10 ? 'large_miss' : fbSp < -3 ? 'miss' : 'in_line'
-
             return (
-              <div style={{ background: '#111820', border: '1px solid #1a2535', borderLeft: `2px solid ${fbBadgeColor}` }}>
+              <div style={{ background: '#111820', border: '1px solid #1a2535' }}>
                 <div style={{ padding: '7px 12px', borderBottom: '1px solid #1a2535', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <span style={{ color: '#3a4a5a', fontSize: 9, textTransform: 'uppercase', letterSpacing: '0.12em', ...inter }}>ÚLTIMO DATO PUBLICADO</span>
-                  <span style={{ fontSize: 9, fontWeight: 700, color: '#ffcc00', ...inter }}>◈ MANUAL</span>
+                  <span style={{ fontSize: 9, color: '#3a4a5a', ...inter }}>—</span>
                 </div>
-                <div style={{ padding: '10px 12px' }}>
-                  <p style={{ margin: '0 0 1px', fontSize: 12, fontWeight: 700, color: '#e8edf2' }}>{lr.event}</p>
-                  <p style={{ margin: '0 0 10px', fontSize: 9, color: '#3a4a5a', ...inter }}>{lr.date}</p>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 4, marginBottom: 10 }}>
-                    {[
-                      ['ANTERIOR', lr.previous, '#7a8a9a'],
-                      ['PREVISTO', lr.forecast,  '#ffcc00'],
-                      ['ACTUAL',   lr.actual,    fbActualColor],
-                    ].map(([label, value, color]) => (
-                      <div key={label} style={{ textAlign: 'center', padding: '7px 4px', background: '#060a0f', border: '1px solid #1a2535' }}>
-                        <p style={{ margin: '0 0 3px', fontSize: 8, color: '#3a4a5a', textTransform: 'uppercase', letterSpacing: '0.08em', ...inter }}>{label}</p>
-                        <p style={{ margin: 0, fontSize: 14, fontWeight: 700, color, fontFamily: 'JetBrains Mono, monospace' }}>
-                          {value != null ? `${value}${lr.unit ?? ''}` : '—'}
-                        </p>
-                      </div>
-                    ))}
-                  </div>
-                  <p style={{ margin: '0 0 12px', fontSize: 11, fontWeight: 700, color: fbBadgeColor, fontFamily: 'JetBrains Mono, monospace' }}>
-                    SORPRESA: {fbSp >= 0 ? '+' : ''}{fbSp.toFixed(2)}% {surpriseBadge(fbLabel)}
-                  </p>
-                  {lr.usd_impact_score != null && (
-                    <div>
-                      <ImpactBar label="USD"  score={lr.usd_impact_score} />
-                      <ImpactBar label="XAU"  score={lr.gold_impact_score} />
-                      <ImpactBar label="BOND" score={lr.bond_impact_score} />
-                      <ImpactBar label="RISK" score={lr.risk_sentiment_score} />
-                    </div>
-                  )}
+                <div style={{ padding: '20px 12px', textAlign: 'center' }}>
+                  <p style={{ margin: 0, fontSize: 11, color: '#7a8a9a', ...inter }}>Sin datos disponibles</p>
                 </div>
               </div>
             )
