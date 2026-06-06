@@ -1,0 +1,14 @@
+node_modules/
+dist/
+dev-dist/
+*.local
+.DS_Store
+*.png
+!public/icon-192.png
+!public/icon-512.png
+!public/favicon.svg
+verify_*.mjs
+ss_*.mjs
+ss_*.png
+make_icons.mjs
+ss*.mjs
