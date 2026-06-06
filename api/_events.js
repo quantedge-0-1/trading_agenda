@@ -45,13 +45,19 @@ export const EVENTS = [
 ]
 
 export function toShape(e) {
+  // Normalize to UTC ISO so Android Chrome parses correctly
+  const utc = new Date(e.date).toISOString()
   return {
-    id:         e.id,
-    event_name: e.name,
-    event_date: e.date,
-    importance: e.importance,
-    previous:   e.prev,
-    forecast:   e.fc,
-    actual:     e.actual,
+    id:             e.id,
+    event_name:     e.name,
+    event_at:       utc,          // Home.jsx uses ev.event_at
+    event_date:     utc,          // compat alias
+    importance:     e.importance,
+    is_high_impact: e.importance === 'high',
+    currency:       'USD',
+    previous:       e.prev ?? null,
+    forecast:       e.fc  ?? null,
+    actual:         e.actual ?? null,
+    unit:           e.unit ?? '',
   }
 }
