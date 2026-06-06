@@ -8,7 +8,7 @@ export default async function handler(req, res) {
   const events = EVENTS
     .filter(e => new Date(e.date).getTime() > now)
     .sort((a, b) => new Date(a.date) - new Date(b.date))
-    .slice(0, 8)
+    .slice(0, 10)
     .map(toShape)
 
   res.json({ events })
