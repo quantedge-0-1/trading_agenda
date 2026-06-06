@@ -45,9 +45,9 @@ export function AppProvider({ children }) {
     return d?.date === TODAY ? d.ruleIds : []
   })
 
-  // Daily reminder shown
+  // Daily reminder shown — sessionStorage so it reappears on every fresh app open
   const [reminderShown, setReminderShown] = useState(() => {
-    return load('reminder_date', null) === TODAY
+    return sessionStorage.getItem('reminder_shown') === 'true'
   })
 
   // Weekly plan notes
@@ -102,7 +102,7 @@ export function AppProvider({ children }) {
   }
 
   function dismissReminder() {
-    save('reminder_date', TODAY)
+    sessionStorage.setItem('reminder_shown', 'true')
     setReminderShown(true)
   }
 
