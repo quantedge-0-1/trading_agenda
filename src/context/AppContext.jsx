@@ -29,10 +29,11 @@ export function AppProvider({ children }) {
     return merged.sort((a, b) => new Date(b.date) - new Date(a.date))
   })
 
-  // Daily P&L
+  // Daily P&L — seed from preloaded trades when no localStorage value exists for today
   const [dailyPnL, setDailyPnL] = useState(() => {
     const d = load('daily_pnl', null)
-    return d?.date === TODAY ? d.amount : 0
+    if (d?.date === TODAY) return d.amount
+    return TRADE_LOG.filter(t => t.date === TODAY).reduce((s, t) => s + (Number(t.pnl) || 0), 0)
   })
 
   // Active trading mode

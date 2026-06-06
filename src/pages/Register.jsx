@@ -86,8 +86,9 @@ export default function Register() {
 
   function submit() {
     if (!direction || !result) { alert('Selecciona dirección y resultado'); return }
+    const submitDate = new Date().toISOString().slice(0, 10)
     addTrade({
-      date: TODAY, session, instrument: 'XAUUSD', direction,
+      date: submitDate, session, instrument: 'XAUUSD', direction,
       entry_price: parseFloat(entry) || null,
       stop_loss:   parseFloat(sl)    || null,
       take_profit: parseFloat(tp)    || null,
@@ -165,7 +166,7 @@ export default function Register() {
             ))}
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 60px 1fr' }}>
-            <input type="number" inputMode="decimal" value={exitPrice} onChange={e => { setExitPrice(e.target.value); setPnlManual(false) }} placeholder="3295" style={{ borderRadius: 0, borderRight: '1px solid #1a2535', border: 'none', borderRight: '1px solid #1a2535', padding: '8px', fontSize: 13 }} />
+            <input type="number" inputMode="decimal" value={exitPrice} onChange={e => { setExitPrice(e.target.value); setPnlManual(false) }} placeholder="3295" style={{ borderRadius: 0, border: 'none', borderRight: '1px solid #1a2535', padding: '8px', fontSize: 13 }} />
             <input type="number" inputMode="decimal" value={contracts} onChange={e => setContracts(e.target.value)} placeholder="1" style={{ borderRadius: 0, border: 'none', borderRight: '1px solid #1a2535', padding: '8px', fontSize: 13, textAlign: 'center' }} />
             <input type="number" inputMode="decimal" value={pnl} onChange={e => { setPnl(e.target.value); setPnlManual(true) }} placeholder="automático" style={{ borderRadius: 0, border: 'none', padding: '8px', fontSize: 13, color: pnlColor, fontWeight: 700 }} />
           </div>
