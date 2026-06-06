@@ -24,35 +24,24 @@ function beatMiss(actual, forecast) {
   if (actual == null || forecast == null) return null
   const pct = forecast !== 0 ? ((actual - forecast) / Math.abs(forecast)) * 100 : 0
   if (Math.abs(pct) < 2) return { label: 'INLINE', color: '#7a8a9a' }
-  if (pct > 10)  return { label: '▲▲ BEAT',      color: '#00ff88' }
-  if (pct > 2)   return { label: '▲ BEAT',        color: '#00ff88' }
-  if (pct < -10) return { label: '▼▼ MISS',       color: '#ff3355' }
-  return               { label: '▼ MISS',          color: '#ff3355' }
+  if (pct > 10)  return { label: '▲▲ BEAT',  color: '#00ff88' }
+  if (pct > 2)   return { label: '▲ BEAT',   color: '#00ff88' }
+  if (pct < -10) return { label: '▼▼ MISS',  color: '#ff3355' }
+  return               { label: '▼ MISS',    color: '#ff3355' }
 }
 
 const importanceColor = { high: '#ff3355', medium: '#ffcc00', low: '#3a4a5a' }
 
-// Extract macro bias from weekly plan text — checks USD first, then gold
-function macroDir(text) {
-  const lower = text.toLowerCase()
-  // USD bullish → gold bearish
-  if (lower.includes('usd alcista') || lower.includes('usd bullish') || lower.includes('beat'))
-    return { usd: 'ALCISTA', xau: 'BAJISTA', bias: 'bajista', pct: 25 }
-  // USD bearish → gold bullish
-  if (lower.includes('usd bajista') || lower.includes('usd bearish') || lower.includes('miss'))
-    return { usd: 'BAJISTA', xau: 'ALCISTA', bias: 'alcista', pct: 75 }
-  // Gold explicitly bullish
-  if (lower.includes('oro alcista') || lower.includes('gold bullish'))
-    return { usd: 'BAJISTA', xau: 'ALCISTA', bias: 'alcista', pct: 75 }
-  // Gold explicitly bearish
-  if (lower.includes('oro bajista') || lower.includes('bajista estructural'))
-    return { usd: 'ALCISTA', xau: 'BAJISTA', bias: 'bajista', pct: 25 }
-  return { usd: 'NEUTRAL', xau: 'NEUTRAL', bias: 'neutral', pct: 50 }
+function biasStyle(val) {
+  const v = (val ?? '').toUpperCase()
+  if (v === 'ALCISTA') return '#00ff88'
+  if (v === 'BAJISTA') return '#ff3355'
+  return '#ffcc00'
 }
 
 export default function Home() {
   const { account, todayPnL, setDailyPnL, todayTrades, dayStatus, activeMode, setActiveMode } = useApp()
-  const { upcoming, released } = useTerminal()
+  const { upcoming, released, terminalStatus, terminalData } = useTerminal()
   const navigate = useNavigate()
   const [editingPnL, setEditingPnL] = useState(false)
   const [pnlInput,   setPnlInput]   = useState('')
@@ -62,21 +51,31 @@ export default function Home() {
   const progressPct   = Math.min(100, account.progress_pct)
   const drawdownColor = account.drawdown_remaining < 300 ? '#ff3355' : account.drawdown_remaining < 800 ? '#ffcc00' : '#00ff88'
   const pnlColor      = todayPnL >= 0 ? '#00ff88' : '#ff3355'
-  const statusColor   = dayStatus === 'OPERANDO' ? '#00ff88' : '#ff3355'
   const stopLeft      = Math.max(0, 150 + todayPnL)
 
-  // Risk manager progress: green→yellow→orange→red based on P&L
-  const riskPct = Math.min(100, (Math.abs(Math.min(0, todayPnL)) / 150) * 100)
+  const riskPct   = Math.min(100, (Math.abs(Math.min(0, todayPnL)) / 150) * 100)
   const riskColor = riskPct > 80 ? '#ff3355' : riskPct > 50 ? '#ff7700' : riskPct > 25 ? '#ffcc00' : '#00ff88'
 
-  const macro = macroDir(WEEKLY_PLAN.macro_bias)
+  // Sesgo — usa datos del terminal si está conectado, sino WEEKLY_PLAN manual
+  const isConnected   = terminalStatus === 'connected'
+  const termBias      = terminalData?.sessionBias
+  const usdBias       = termBias?.usd_bias      ?? WEEKLY_PLAN.usd_bias      ?? 'NEUTRAL'
+  const xauBias       = termBias?.xau_bias      ?? WEEKLY_PLAN.xau_bias      ?? 'NEUTRAL'
+  const sessionBias   = (termBias?.session_bias ?? WEEKLY_PLAN.session_bias  ?? 'NEUTRAL').toUpperCase()
+  const biasBarPct    = sessionBias === 'BAJISTA' ? 30 : sessionBias === 'ALCISTA' ? 70 : 50
+  const biasColor     = biasStyle(sessionBias)
+
   const levels = WEEKLY_PLAN.key_levels?.XAUUSD
-  const bsl = levels?.resistance?.[0] ?? 4490
-  const ssl = levels?.support?.[0] ?? 4442
+  const bsl = levels?.resistance?.[0] ?? 4390
+  const ssl = levels?.support?.[0]    ?? 4320
   const eq  = Math.round((bsl + ssl) / 2)
-  const biasBarPct = macro.bias === 'bajista' ? 30 : macro.bias === 'alcista' ? 70 : 50
-  const biasLabel  = macro.bias === 'bajista' ? 'BAJISTA' : macro.bias === 'alcista' ? 'ALCISTA' : 'NEUTRAL'
-  const biasColor  = macro.bias === 'bajista' ? '#ff3355' : macro.bias === 'alcista' ? '#00ff88' : '#ffcc00'
+
+  // Last release from terminal
+  const lastRelease  = terminalData?.lastRelease
+  const analysis     = lastRelease?.analysis ?? []     // array of strings from terminal
+  const surprisePct  = lastRelease?.surprise_pct
+  const usdScore     = lastRelease?.usd_score
+  const xauScore     = lastRelease?.xau_score
 
   function submitPnL() {
     const val = parseFloat(pnlInput)
@@ -86,12 +85,8 @@ export default function Home() {
 
   const CELL = (label, value, color = '#e8edf2', onClick) => (
     <div onClick={onClick} style={{ flex: 1, padding: '8px 6px', textAlign: 'center', borderRight: '1px solid #1a2535', cursor: onClick ? 'pointer' : 'default', minWidth: 0 }}>
-      <p style={{ margin: '0 0 3px', fontSize: 9, color: '#7a8a9a', textTransform: 'uppercase', letterSpacing: '0.1em', ...inter }}>
-        {label}
-      </p>
-      <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-        {value}
-      </p>
+      <p style={{ margin: '0 0 3px', fontSize: 9, color: '#7a8a9a', textTransform: 'uppercase', letterSpacing: '0.1em', ...inter }}>{label}</p>
+      <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{value}</p>
     </div>
   )
 
@@ -130,21 +125,40 @@ export default function Home() {
           </div>
         )}
 
-        {/* ── Macro Context Card ───────────────────────────── */}
+        {/* ── Macro Regime Card ────────────────────────────── */}
         <div style={{ background: '#111820', border: '1px solid #1a2535' }}>
           <div style={{ padding: '8px 12px', borderBottom: '1px solid #1a2535', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <span style={{ color: '#3a4a5a', fontSize: 9, textTransform: 'uppercase', letterSpacing: '0.12em', ...inter }}>RÉGIMEN MACRO</span>
-            <span style={{ color: '#3a4a5a', fontSize: 9, ...inter }}>XAUUSD</span>
+            {/* Terminal connection badge */}
+            <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.08em', color: isConnected ? '#00ff88' : '#3a4a5a', ...inter }}>
+              {terminalStatus === 'checking' ? '◌ VERIFICANDO' : isConnected ? '● TERMINAL CONECTADA' : '○ TERMINAL OFFLINE'}
+            </span>
           </div>
           <div style={{ padding: '10px 12px' }}>
+            {/* USD / ORO bias row */}
             <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 6 }}>
               <span style={{ color: '#7a8a9a', fontSize: 10, ...inter }}>USD:</span>
-              <span style={{ color: macro.usd === 'ALCISTA' ? '#00ff88' : macro.usd === 'BAJISTA' ? '#ff3355' : '#ffcc00', fontSize: 10, fontWeight: 700, letterSpacing: '0.06em' }}>{macro.usd}</span>
+              <span style={{ color: biasStyle(usdBias), fontSize: 10, fontWeight: 700, letterSpacing: '0.06em' }}>{usdBias.toUpperCase()}</span>
               <span style={{ color: '#3a4a5a', fontSize: 10 }}>◆</span>
               <span style={{ color: '#7a8a9a', fontSize: 10, ...inter }}>ORO:</span>
-              <span style={{ color: macro.xau === 'ALCISTA' ? '#00ff88' : macro.xau === 'BAJISTA' ? '#ff3355' : '#ffcc00', fontSize: 10, fontWeight: 700, letterSpacing: '0.06em' }}>{macro.xau}</span>
+              <span style={{ color: biasStyle(xauBias), fontSize: 10, fontWeight: 700, letterSpacing: '0.06em' }}>{xauBias.toUpperCase()}</span>
             </div>
-            <p style={{ margin: '0 0 4px', fontSize: 11, color: '#e8edf2', lineHeight: 1.5 }}>{WEEKLY_PLAN.macro_bias}</p>
+
+            {isConnected ? (
+              <p style={{ margin: '0 0 4px', fontSize: 10, color: '#7a8a9a', ...inter }}>
+                Señales y análisis generados por Economic Intelligence Terminal
+              </p>
+            ) : (
+              <>
+                <p style={{ margin: '0 0 4px', fontSize: 11, color: '#e8edf2', lineHeight: 1.5 }}>{WEEKLY_PLAN.macro_bias}</p>
+                {terminalData && (
+                  <p style={{ margin: '0 0 4px', fontSize: 9, color: '#3a4a5a', ...inter }}>
+                    Usando último contexto guardado
+                  </p>
+                )}
+              </>
+            )}
+
             {WEEKLY_PLAN.high_impact_events?.[0] && (
               <p style={{ margin: 0, fontSize: 10, color: '#ffcc00', ...inter }}>
                 Próx. catalizador: {WEEKLY_PLAN.high_impact_events[0].day} — {WEEKLY_PLAN.high_impact_events[0].event}
@@ -153,11 +167,50 @@ export default function Home() {
           </div>
         </div>
 
+        {/* ── Último Análisis Terminal (solo cuando conectado y hay datos) ── */}
+        {lastRelease && (
+          <div style={{ background: '#111820', border: '1px solid #1a2535', borderLeft: '2px solid #00ff88' }}>
+            <div style={{ padding: '7px 12px', borderBottom: '1px solid #1a2535', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span style={{ color: '#3a4a5a', fontSize: 9, textTransform: 'uppercase', letterSpacing: '0.12em', ...inter }}>ÚLTIMO ANÁLISIS TERMINAL</span>
+              <span style={{ color: '#00ff88', fontSize: 9, fontWeight: 700, ...inter }}>● LIVE</span>
+            </div>
+            <div style={{ padding: '10px 12px' }}>
+              {/* Event name + scores */}
+              <p style={{ margin: '0 0 6px', fontSize: 11, fontWeight: 700, color: '#e8edf2' }}>{lastRelease.event_name ?? lastRelease.name}</p>
+              <div style={{ display: 'flex', gap: 12, marginBottom: 8 }}>
+                {surprisePct != null && (
+                  <span style={{ fontSize: 10, color: surprisePct >= 0 ? '#00ff88' : '#ff3355', fontWeight: 700 }}>
+                    Surprise {surprisePct >= 0 ? '+' : ''}{surprisePct.toFixed(0)}%
+                  </span>
+                )}
+                {usdScore != null && (
+                  <span style={{ fontSize: 10, color: '#7a8a9a', ...inter }}>
+                    USD <span style={{ color: usdScore >= 0 ? '#00ff88' : '#ff3355', fontWeight: 700 }}>{usdScore >= 0 ? '+' : ''}{usdScore}</span>
+                  </span>
+                )}
+                {xauScore != null && (
+                  <span style={{ fontSize: 10, color: '#7a8a9a', ...inter }}>
+                    XAU <span style={{ color: xauScore >= 0 ? '#00ff88' : '#ff3355', fontWeight: 700 }}>{xauScore >= 0 ? '+' : ''}{xauScore}</span>
+                  </span>
+                )}
+              </div>
+              {/* 4-line terminal analysis */}
+              {analysis.length > 0 && (
+                <div style={{ borderLeft: '2px solid #1a2535', paddingLeft: 10 }}>
+                  {analysis.map((line, i) => (
+                    <p key={i} style={{ margin: '0 0 3px', fontSize: 10, color: '#e8edf2', lineHeight: 1.5 }}>{line}</p>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
         {/* ── Session Bias ─────────────────────────────────── */}
         <div style={{ background: '#111820', border: '1px solid #1a2535' }}>
           <div style={{ padding: '8px 12px', borderBottom: '1px solid #1a2535', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <span style={{ color: '#3a4a5a', fontSize: 9, textTransform: 'uppercase', letterSpacing: '0.12em', ...inter }}>SESGO SESIÓN</span>
-            <span style={{ color: biasColor, fontSize: 10, fontWeight: 700, letterSpacing: '0.08em' }}>{biasLabel}</span>
+            <span style={{ color: biasColor, fontSize: 10, fontWeight: 700, letterSpacing: '0.08em' }}>{sessionBias}</span>
           </div>
           <div style={{ padding: '10px 12px' }}>
             {/* Bias bar */}
@@ -168,8 +221,10 @@ export default function Home() {
               </div>
               <span style={{ color: '#ff3355', fontSize: 9, ...inter, letterSpacing: '0.06em', flexShrink: 0 }}>BEAR</span>
             </div>
-            <p style={{ margin: '0 0 8px', fontSize: 10, color: '#7a8a9a', ...inter }}>Londres 08:00–13:00 Colombia · Nueva York 13:00–18:00</p>
-            {/* Key levels */}
+            <p style={{ margin: '0 0 8px', fontSize: 10, color: '#7a8a9a', ...inter }}>
+              {isConnected ? 'Sesgo calculado por Economic Intelligence Terminal' : 'Londres 08:00–13:00 Colombia · Nueva York 13:00–18:00'}
+            </p>
+            {/* BSL / EQ / SSL from WEEKLY_PLAN key levels */}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 6 }}>
               {[['BSL', bsl, '#00ff88'], ['EQ', eq, '#7a8a9a'], ['SSL', ssl, '#ff3355']].map(([l, v, c]) => (
                 <div key={l} style={{ textAlign: 'center', padding: '6px', background: '#060a0f', border: '1px solid #1a2535' }}>
@@ -181,23 +236,22 @@ export default function Home() {
           </div>
         </div>
 
-        {/* ── Just-released events ─────────────────────────── */}
+        {/* ── Just-released events (from hardcoded calendar) ─ */}
         {released.length > 0 && (
           <div style={{ background: '#111820', border: '1px solid #1a2535' }}>
             <div style={{ padding: '7px 12px', borderBottom: '1px solid #1a2535' }}>
               <span style={{ color: '#3a4a5a', fontSize: 9, textTransform: 'uppercase', letterSpacing: '0.12em', ...inter }}>PUBLICADO RECIENTEMENTE</span>
             </div>
-            {/* Table header */}
             <div style={{ display: 'grid', gridTemplateColumns: '46px 1fr 80px 38px 38px', padding: '5px 12px', borderBottom: '1px solid #1a2535' }}>
               {['HORA', 'EVENTO', 'BADGE', 'USD', 'XAU'].map(h => (
                 <span key={h} style={{ color: '#3a4a5a', fontSize: 8, textTransform: 'uppercase', letterSpacing: '0.08em', ...inter }}>{h}</span>
               ))}
             </div>
             {released.map(ev => {
-              const bm = beatMiss(ev.actual, ev.forecast)
+              const bm  = beatMiss(ev.actual, ev.forecast)
               const isExp = expandedId === ev.id
-              const xauDir = bm ? (bm.label.includes('▲') ? '▲' : bm.label.includes('▼') ? '▼' : '—') : '—'
               const usdDir = bm ? (bm.label.includes('▲') ? '▲' : bm.label.includes('▼') ? '▼' : '—') : '—'
+              const xauDir = bm ? (bm.label.includes('▲') ? '▲' : bm.label.includes('▼') ? '▼' : '—') : '—'
               return (
                 <div key={ev.id} onClick={() => setExpandedId(isExp ? null : ev.id)}>
                   <div style={{ display: 'grid', gridTemplateColumns: '46px 1fr 80px 38px 38px', padding: '8px 12px', borderBottom: '1px solid #1a2535', cursor: 'pointer', alignItems: 'center' }}>
@@ -209,7 +263,7 @@ export default function Home() {
                   </div>
                   {isExp && (
                     <div style={{ padding: '10px 12px', background: '#0d1117', borderBottom: '1px solid #1a2535' }}>
-                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8, marginBottom: 8 }}>
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8 }}>
                         {[['Anterior', ev.previous], ['Forecast', ev.forecast], ['Actual', ev.actual]].map(([l, v]) => (
                           <div key={l} style={{ textAlign: 'center', padding: '6px', background: '#060a0f', border: '1px solid #1a2535' }}>
                             <p style={{ margin: '0 0 3px', fontSize: 9, color: '#3a4a5a', textTransform: 'uppercase', ...inter }}>{l}</p>

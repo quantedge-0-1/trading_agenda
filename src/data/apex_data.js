@@ -164,23 +164,33 @@ export const RULES = [
 // ─── PLAN SEMANAL ────────────────────────────────────────────────────────────
 export const WEEKLY_PLAN = {
   week: "Jun 9 - Jun 13, 2026",
-  macro_bias: "NFP Mayo BEAT fuerte (172K vs 85K forecast, +102%). USD alcista — mercado descarta recortes Fed. Oro bajo presión bajista estructural. Buscar SHORTs en retrocesos.",
+
+  // ── Sesgo manual — el trader actualiza esto cada semana ──────────────────
+  usd_bias: "ALCISTA",   // "ALCISTA" | "BAJISTA" | "NEUTRAL"
+  xau_bias: "BAJISTA",   // "ALCISTA" | "BAJISTA" | "NEUTRAL"
+  session_bias: "BAJISTA", // sesgo dominante de la sesión
+
+  macro_bias: "NFP Mayo BEAT fuerte (172K vs 85K, +102%). USD alcista — mercado descarta recortes Fed. Oro bajo presión bajista estructural. Buscar SHORTs en retrocesos.",
+
   key_levels: {
     XAUUSD: {
       resistance: [4390, 4420, 4455],
-      support: [4320, 4290, 4260],
+      support:    [4320, 4290, 4260],
     },
   },
+
   preferred_setup: "SHORT en retroceso a OB bajista 4,380–4,400. Confirmar CHoCH en M15 + vela de confirmación cerrada. No perseguir — esperar el pullback.",
   sessions_to_trade: ["Londres", "Nueva York"],
+
   high_impact_events: [
     { day: "Jueves 11 Jun", event: "CPI YoY Mayo — No operar 15 min antes" },
     { day: "Miércoles 17 Jun", event: "FOMC Rate Decision — Cerrar todo 15 min antes" },
   ],
+
   goals: {
-    min_target: 200,
+    min_target:   200,
     max_drawdown: 150,
-    max_trades: 2,
+    max_trades:   2,
   },
 };
 
