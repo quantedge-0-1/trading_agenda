@@ -1,7 +1,40 @@
 import { useState } from 'react'
 import { useApp } from '../context/AppContext.jsx'
 import { inter } from '../utils/styles.js'
+import { useToast } from '../context/ToastContext.jsx'
+
 const FILTERS = ['todo', 'semana', 'wins', 'losses']
+
+const CSV_HEADERS = ['fecha','instrumento','dirección','sesión','entrada','stop_loss','take_profit','cierre','pnl','resultado','rr_planificado','setup','emoción','lección']
+
+function escapeCSV(v) {
+  if (v == null) return ''
+  const s = String(v)
+  return s.includes(',') || s.includes('"') || s.includes('\n') ? `"${s.replace(/"/g, '""')}"` : s
+}
+
+function buildCSV(trades) {
+  const rows = [CSV_HEADERS.join(',')]
+  trades.forEach(t => {
+    rows.push([
+      t.date,
+      t.instrument || 'XAUUSD',
+      t.direction || '',
+      t.session || '',
+      t.entry_price ?? '',
+      t.stop_loss ?? '',
+      t.take_profit ?? '',
+      t.result_price ?? '',
+      t.pnl ?? 0,
+      t.result || '',
+      t.rr_planned ?? '',
+      t.setup?.entry_zone || '',
+      t.emotion_before || '',
+      t.lesson || '',
+    ].map(escapeCSV).join(','))
+  })
+  return rows.join('\r\n')
+}
 
 function fmtDate(iso) {
   const d = new Date(iso + 'T12:00:00')
@@ -12,8 +45,22 @@ function fmtFull(n) { return (n >= 0 ? '+' : '') + Number(n).toFixed(2) }
 
 export default function Diary() {
   const { trades } = useApp()
+  const { addToast } = useToast()
   const [filter, setFilter] = useState('todo')
   const [expanded, setExpanded] = useState(null)
+
+  function exportCSV() {
+    if (trades.length === 0) { addToast('No hay operaciones para exportar', 'warning'); return }
+    const csv  = buildCSV([...trades].sort((a, b) => a.date.localeCompare(b.date)))
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
+    const url  = URL.createObjectURL(blob)
+    const a    = document.createElement('a')
+    a.href     = url
+    a.download = `trade_log_${new Date().toISOString().slice(0, 10)}.csv`
+    a.click()
+    URL.revokeObjectURL(url)
+    addToast(`${trades.length} operaciones exportadas`, 'success')
+  }
 
   const today = new Date()
   const weekStart = new Date(today)
@@ -38,9 +85,22 @@ export default function Diary() {
   return (
     <div className="page">
       {/* Header */}
-      <div style={{ padding: '10px 14px 9px', borderBottom: '1px solid #1a2535' }}>
-        <p style={{ color: '#3a4a5a', fontSize: 9, textTransform: 'uppercase', letterSpacing: '0.14em', margin: '0 0 2px', ...inter }}>Historial</p>
-        <p style={{ color: '#e8edf2', fontSize: 13, fontWeight: 700, margin: 0, letterSpacing: '0.04em' }}>TRADE LOG</p>
+      <div style={{ padding: '10px 14px 9px', borderBottom: '1px solid #1a2535', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div>
+          <p style={{ color: '#3a4a5a', fontSize: 9, textTransform: 'uppercase', letterSpacing: '0.14em', margin: '0 0 2px', ...inter }}>Historial</p>
+          <p style={{ color: '#e8edf2', fontSize: 13, fontWeight: 700, margin: 0, letterSpacing: '0.04em' }}>TRADE LOG</p>
+        </div>
+        <button onClick={exportCSV} style={{
+          background: 'none', border: '1px solid #1a2535', color: '#7a8a9a',
+          padding: '5px 10px', fontSize: 9, fontFamily: 'inherit', cursor: 'pointer',
+          letterSpacing: '0.08em', textTransform: 'uppercase', ...inter,
+          display: 'flex', alignItems: 'center', gap: 5,
+        }}>
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
+          </svg>
+          CSV
+        </button>
       </div>
 
       {/* Stats strip */}
