@@ -32,11 +32,21 @@ function beatMiss(actual, forecast) {
 
 const importanceColor = { high: '#ff3355', medium: '#ffcc00', low: '#3a4a5a' }
 
-// Extract macro bias direction from the weekly plan text
+// Extract macro bias from weekly plan text — checks USD first, then gold
 function macroDir(text) {
   const lower = text.toLowerCase()
-  if (lower.includes('bajista')) return { usd: 'ALCISTA', xau: 'BAJISTA PRESIÓN', bias: 'bajista', pct: 30 }
-  if (lower.includes('alcista')) return { usd: 'ALCISTA', xau: 'BAJISTA PRESIÓN', bias: 'bajista', pct: 30 }
+  // USD bullish → gold bearish
+  if (lower.includes('usd alcista') || lower.includes('usd bullish') || lower.includes('beat'))
+    return { usd: 'ALCISTA', xau: 'BAJISTA', bias: 'bajista', pct: 25 }
+  // USD bearish → gold bullish
+  if (lower.includes('usd bajista') || lower.includes('usd bearish') || lower.includes('miss'))
+    return { usd: 'BAJISTA', xau: 'ALCISTA', bias: 'alcista', pct: 75 }
+  // Gold explicitly bullish
+  if (lower.includes('oro alcista') || lower.includes('gold bullish'))
+    return { usd: 'BAJISTA', xau: 'ALCISTA', bias: 'alcista', pct: 75 }
+  // Gold explicitly bearish
+  if (lower.includes('oro bajista') || lower.includes('bajista estructural'))
+    return { usd: 'ALCISTA', xau: 'BAJISTA', bias: 'bajista', pct: 25 }
   return { usd: 'NEUTRAL', xau: 'NEUTRAL', bias: 'neutral', pct: 50 }
 }
 
@@ -129,10 +139,10 @@ export default function Home() {
           <div style={{ padding: '10px 12px' }}>
             <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 6 }}>
               <span style={{ color: '#7a8a9a', fontSize: 10, ...inter }}>USD:</span>
-              <span style={{ color: '#00ff88', fontSize: 10, fontWeight: 700, letterSpacing: '0.06em' }}>ALCISTA</span>
+              <span style={{ color: macro.usd === 'ALCISTA' ? '#00ff88' : macro.usd === 'BAJISTA' ? '#ff3355' : '#ffcc00', fontSize: 10, fontWeight: 700, letterSpacing: '0.06em' }}>{macro.usd}</span>
               <span style={{ color: '#3a4a5a', fontSize: 10 }}>◆</span>
               <span style={{ color: '#7a8a9a', fontSize: 10, ...inter }}>ORO:</span>
-              <span style={{ color: '#ff3355', fontSize: 10, fontWeight: 700, letterSpacing: '0.06em' }}>BAJISTA PRESIÓN</span>
+              <span style={{ color: macro.xau === 'ALCISTA' ? '#00ff88' : macro.xau === 'BAJISTA' ? '#ff3355' : '#ffcc00', fontSize: 10, fontWeight: 700, letterSpacing: '0.06em' }}>{macro.xau}</span>
             </div>
             <p style={{ margin: '0 0 4px', fontSize: 11, color: '#e8edf2', lineHeight: 1.5 }}>{WEEKLY_PLAN.macro_bias}</p>
             {WEEKLY_PLAN.high_impact_events?.[0] && (

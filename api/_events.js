@@ -12,7 +12,7 @@ export const EVENTS = [
 
   // ══ NFP MAYO — YA LIBERADO ══════════════════════════════════════════════════
   // Miss fuerte: 139K vs 185K → bearish USD, bullish gold
-  { id:'nfp-2026-06',      name:'Non-Farm Payrolls (May)',          date:'2026-06-05T08:30:00-04:00', importance:'high',   prev:177,  fc:185,  actual:139  },
+  { id:'nfp-2026-06',      name:'Non-Farm Payrolls (May)',          date:'2026-06-05T08:30:00-04:00', importance:'high',   prev:147,  fc:85,   actual:172  },
 
   // ══ SEMANA 1 — Jun 9–13 ════════════════════════════════════════════════════
   // Martes 9 Jun
