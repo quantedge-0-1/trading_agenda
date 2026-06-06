@@ -164,18 +164,18 @@ export const RULES = [
 // ─── PLAN SEMANAL ────────────────────────────────────────────────────────────
 export const WEEKLY_PLAN = {
   week: "Jun 9 - Jun 13, 2026",
-  macro_bias: "USD alcista post-NFP fuerte (172K vs 115K). Oro en presión bajista. Fed no baja tasas.",
+  macro_bias: "NFP Mayo débil (139K vs 185K forecast) → USD en presión bajista. Fed puede recortar en H2 2026. Oro busca soporte en 4,340–4,360 tras rechazo en 4,490.",
   key_levels: {
     XAUUSD: {
-      resistance: [4490, 4511, 4537],
-      support: [4442, 4425, 4400],
+      resistance: [4390, 4420, 4455],
+      support: [4340, 4310, 4280],
     },
   },
-  preferred_setup: "SHORT en retroceso a 4,490-4,500 (order block bajista post-NFP). Confirmar CHoCH en M5.",
+  preferred_setup: "LONG en retroceso a 4,340–4,360 (FVG semanal + OB diario). Confirmar CHoCH en M15 con vela de confirmación cerrada.",
   sessions_to_trade: ["Londres", "Nueva York"],
   high_impact_events: [
-    { day: "Lunes", event: "Revisar calendario — sin datos críticos programados" },
-    { day: "Miércoles", event: "CPI USA — No operar 15 min antes" },
+    { day: "Jueves 11 Jun", event: "CPI YoY Mayo — No operar 15 min antes" },
+    { day: "Miércoles 17 Jun", event: "FOMC Rate Decision — Cerrar todo 15 min antes" },
   ],
   goals: {
     min_target: 200,
