@@ -166,16 +166,17 @@ export const WEEKLY_PLAN = {
   week: "Jun 9 - Jun 13, 2026",
 
   // ── Sesgo manual — el trader actualiza esto cada semana ──────────────────
-  usd_bias: "ALCISTA",   // "ALCISTA" | "BAJISTA" | "NEUTRAL"
-  xau_bias: "BAJISTA",   // "ALCISTA" | "BAJISTA" | "NEUTRAL"
-  session_bias: "BAJISTA", // sesgo dominante de la sesión
+  // Terminal sobreescribe este sesgo cuando está conectado (session-bias endpoint)
+  usd_bias: "ALCISTA",     // NFP +102% → USD fuerte
+  xau_bias: "BAJISTA",     // Inverso al USD
+  session_bias: "BAJISTA", // Sesgo dominante para XAUUSD esta semana
 
-  macro_bias: "NFP Mayo BEAT fuerte (172K vs 85K, +102%). USD alcista — mercado descarta recortes Fed. Oro bajo presión bajista estructural. Buscar SHORTs en retrocesos.",
+  macro_bias: "NFP Mayo BEAT FUERTE (172K vs 85K, +102%). USD alcista — mercado descarta recortes Fed en junio. Oro bajo presión bajista estructural. Buscar SHORTs en retrocesos hacia zona OB. CUIDADO: CPI jueves 11 Jun puede revertir el movimiento.",
 
-  // Último dato macro relevante — el trader actualiza esto cada semana
+  // Último dato macro relevante — se sobreescribe por terminal cuando conectado
   last_release: {
     event:    "Non-Farm Payrolls (May)",
-    date:     "Jun 6, 2026",
+    date:     "Jun 5, 2026",
     actual:   172,
     forecast: 85,
     previous: 147,
@@ -184,16 +185,17 @@ export const WEEKLY_PLAN = {
 
   key_levels: {
     XAUUSD: {
-      resistance: [4390, 4420, 4455],
-      support:    [4320, 4290, 4260],
+      resistance: [4390, 4420, 4455],  // BSL institucional — zona de OB bajista
+      support:    [4320, 4290, 4260],  // SSL institucional — zona de descuento
     },
   },
 
-  preferred_setup: "SHORT en retroceso a OB bajista 4,380–4,400. Confirmar CHoCH en M15 + vela de confirmación cerrada. No perseguir — esperar el pullback.",
+  // Setup institucional para la semana
+  preferred_setup: "SHORT en retroceso a OB bajista 4,380–4,400. Confirmar CHoCH en M15 + vela de confirmación cerrada. No perseguir el movimiento — esperar el pullback al OB. R:R mínimo 1:2.",
   sessions_to_trade: ["Londres", "Nueva York"],
 
   high_impact_events: [
-    { day: "Jueves 11 Jun", event: "CPI YoY Mayo — No operar 15 min antes" },
+    { day: "Jueves 11 Jun", event: "CPI YoY Mayo — No operar 15 min antes (dato más importante de la semana)" },
     { day: "Miércoles 17 Jun", event: "FOMC Rate Decision — Cerrar todo 15 min antes" },
   ],
 

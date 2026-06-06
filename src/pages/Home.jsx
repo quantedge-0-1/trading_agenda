@@ -39,13 +39,34 @@ function biasStyle(val) {
   return '#ffcc00'
 }
 
+// Implied USD/XAU direction from surprise_label
+function surpriseImplication(surprisePct) {
+  if (surprisePct == null) return { usd: 'NEUTRAL', xau: 'NEUTRAL' }
+  if (surprisePct > 10)  return { usd: 'ALCISTA',  xau: 'BAJISTA' }
+  if (surprisePct > 3)   return { usd: 'ALCISTA',  xau: 'BAJISTA' }
+  if (surprisePct < -10) return { usd: 'BAJISTA',  xau: 'ALCISTA' }
+  if (surprisePct < -3)  return { usd: 'BAJISTA',  xau: 'ALCISTA' }
+  return { usd: 'NEUTRAL', xau: 'NEUTRAL' }
+}
+
+function surpriseBadge(label) {
+  const map = {
+    large_beat: '▲▲ BEAT FUERTE',
+    beat:       '▲ BEAT',
+    in_line:    '◆ INLINE',
+    miss:       '▼ MISS',
+    large_miss: '▼▼ MISS FUERTE',
+  }
+  return map[label] ?? label
+}
+
 export default function Home() {
   const { account, todayPnL, setDailyPnL, todayTrades, dayStatus, activeMode, setActiveMode } = useApp()
-  const { upcoming, released, terminalStatus, terminalData } = useTerminal()
+  const { upcoming, released, preRelease, terminalStatus, terminalData, xauPrice, xauDir } = useTerminal()
   const navigate = useNavigate()
   const [editingPnL, setEditingPnL] = useState(false)
   const [pnlInput,   setPnlInput]   = useState('')
-  const [expandedId, setExpandedId] = useState(null)
+  const [expandedKey, setExpandedKey] = useState(null)
 
   const drawdownPct   = Math.max(0, Math.min(100, account.drawdown_remaining / account.max_trailing_drawdown * 100))
   const progressPct   = Math.min(100, account.progress_pct)
@@ -56,7 +77,7 @@ export default function Home() {
   const riskPct   = Math.min(100, (Math.abs(Math.min(0, todayPnL)) / 150) * 100)
   const riskColor = riskPct > 80 ? '#ff3355' : riskPct > 50 ? '#ff7700' : riskPct > 25 ? '#ffcc00' : '#00ff88'
 
-  // Sesgo — usa datos del terminal si está conectado, sino WEEKLY_PLAN manual
+  // Sesgo — terminal cuando conectado, fallback manual del WEEKLY_PLAN
   const isConnected   = terminalStatus === 'connected' || terminalStatus === 'delay'
   const termBias      = terminalData?.sessionBias
   const usdBias       = termBias?.usd_bias      ?? WEEKLY_PLAN.usd_bias      ?? 'NEUTRAL'
@@ -64,6 +85,7 @@ export default function Home() {
   const sessionBias   = (termBias?.session_bias ?? WEEKLY_PLAN.session_bias  ?? 'NEUTRAL').toUpperCase()
   const biasBarPct    = sessionBias === 'BAJISTA' ? 30 : sessionBias === 'ALCISTA' ? 70 : 50
   const biasColor     = biasStyle(sessionBias)
+  const currentSession = termBias?.session ?? null  // LONDON | NEW_YORK | TOKYO | OFF
 
   const lr     = WEEKLY_PLAN.last_release
   const levels = WEEKLY_PLAN.key_levels?.XAUUSD
@@ -71,12 +93,8 @@ export default function Home() {
   const ssl = levels?.support?.[0]    ?? 4320
   const eq  = Math.round((bsl + ssl) / 2)
 
-  // Last release from terminal
-  const lastRelease  = terminalData?.lastRelease
-  const analysis     = lastRelease?.analysis ?? []     // array of strings from terminal
-  const surprisePct  = lastRelease?.surprise_pct
-  const usdScore     = lastRelease?.usd_score
-  const xauScore     = lastRelease?.xau_score
+  // Last release from terminal (/api/v1/news/live)
+  const lastRelease = terminalData?.lastRelease
 
   function submitPnL() {
     const val = parseFloat(pnlInput)
@@ -118,6 +136,49 @@ export default function Home() {
           <div className="progress-fill" style={{ width: `${drawdownPct}%`, background: drawdownColor }} />
         </div>
 
+        {/* ── Pre-Release Warning Banner ───────────────────── */}
+        {preRelease?.active && (() => {
+          const isPost = preRelease.phase === 'POST_RELEASE'
+          const minsLeft  = preRelease.minutes_to_release ?? preRelease.minutes_until ?? 0
+          const minsSince = preRelease.minutes_since_release ?? 0
+          return (
+            <div style={{
+              background: isPost ? 'rgba(0,255,136,0.06)' : 'rgba(255,51,85,0.10)',
+              border: `1px solid ${isPost ? '#00ff88' : '#ff3355'}`,
+              borderLeft: `3px solid ${isPost ? '#00ff88' : '#ff3355'}`,
+              padding: '10px 14px',
+            }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div>
+                  <p style={{ margin: '0 0 2px', fontSize: 10, fontWeight: 700, color: isPost ? '#00ff88' : '#ff3355', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+                    {isPost ? '● POST-RELEASE' : '⚠ PRE-RELEASE — CERRAR POSICIONES'}
+                  </p>
+                  <p style={{ margin: 0, fontSize: 11, color: '#e8edf2', fontWeight: 600 }}>{preRelease.event_name}</p>
+                  {!isPost && preRelease.forecast != null && (
+                    <p style={{ margin: '2px 0 0', fontSize: 9, color: '#7a8a9a', ...inter }}>
+                      Previsto: {preRelease.forecast}{preRelease.unit ?? ''}
+                    </p>
+                  )}
+                  {isPost && preRelease.actual != null && (
+                    <p style={{ margin: '2px 0 0', fontSize: 9, color: '#7a8a9a', ...inter }}>
+                      Actual: <span style={{ color: '#e8edf2', fontWeight: 700 }}>{preRelease.actual}{preRelease.unit ?? ''}</span>
+                      {preRelease.forecast != null && ` vs previsto ${preRelease.forecast}${preRelease.unit ?? ''}`}
+                    </p>
+                  )}
+                </div>
+                <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                  <p style={{ margin: 0, fontSize: 18, fontWeight: 700, color: isPost ? '#00ff88' : '#ff3355', fontFamily: 'JetBrains Mono, monospace' }}>
+                    {isPost ? `+${Math.round(minsSince)}m` : `${Math.round(minsLeft)}m`}
+                  </p>
+                  <p style={{ margin: '1px 0 0', fontSize: 8, color: '#3a4a5a', textTransform: 'uppercase', letterSpacing: '0.08em', ...inter }}>
+                    {isPost ? 'desde release' : 'restantes'}
+                  </p>
+                </div>
+              </div>
+            </div>
+          )
+        })()}
+
         {/* ── Active mode banner ───────────────────────────── */}
         {activeMode && (
           <div style={{ background: '#111820', borderLeft: '2px solid #00ff88', border: '1px solid #00ff8840', padding: '8px 12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -128,19 +189,40 @@ export default function Home() {
 
         {/* ── Macro Regime Card ────────────────────────────── */}
         <div style={{ background: '#111820', border: '1px solid #1a2535' }}>
+          {/* Header: título + badge terminal */}
           <div style={{ padding: '8px 12px', borderBottom: '1px solid #1a2535', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <span style={{ color: '#3a4a5a', fontSize: 9, textTransform: 'uppercase', letterSpacing: '0.12em', ...inter }}>RÉGIMEN MACRO</span>
-            {/* Terminal connection badge */}
             <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.08em',
               color: terminalStatus === 'connected' ? '#00ff88'
                    : terminalStatus === 'delay'     ? '#ffcc00'
                    : '#3a4a5a', ...inter }}>
-              {terminalStatus === 'checking'  ? '◌ VERIFICANDO'
+              {terminalStatus === 'checking'   ? '◌ VERIFICANDO'
                : terminalStatus === 'connected' ? '● TERMINAL LIVE'
                : terminalStatus === 'delay'     ? '◐ TERMINAL DELAY'
                : '○ TERMINAL OFFLINE'}
             </span>
           </div>
+
+          {/* Live XAUUSD price strip */}
+          {xauPrice != null && (
+            <div style={{ padding: '7px 12px', borderBottom: '1px solid #1a2535', display: 'flex', alignItems: 'center', gap: 10, background: '#0d1117' }}>
+              <span style={{ color: '#3a4a5a', fontSize: 9, letterSpacing: '0.08em', ...inter }}>XAUUSD</span>
+              <span style={{ fontSize: 16, fontWeight: 700, color: '#e8edf2', fontFamily: 'JetBrains Mono, monospace' }}>
+                ${xauPrice.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              </span>
+              {xauDir && (
+                <span style={{ fontSize: 14, color: xauDir === 'up' ? '#00ff88' : '#ff3355', fontWeight: 700 }}>
+                  {xauDir === 'up' ? '▲' : '▼'}
+                </span>
+              )}
+              {currentSession && (
+                <span style={{ marginLeft: 'auto', fontSize: 9, color: '#3a4a5a', textTransform: 'uppercase', letterSpacing: '0.08em', ...inter }}>
+                  {currentSession === 'LONDON' ? '🔵 LONDON' : currentSession === 'NEW_YORK' ? '🟢 NEW YORK' : currentSession === 'TOKYO' ? '🟡 TOKYO' : '⚫ OFF'}
+                </span>
+              )}
+            </div>
+          )}
+
           <div style={{ padding: '10px 12px' }}>
             {/* USD / ORO bias row */}
             <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 6 }}>
@@ -149,25 +231,28 @@ export default function Home() {
               <span style={{ color: '#3a4a5a', fontSize: 10 }}>◆</span>
               <span style={{ color: '#7a8a9a', fontSize: 10, ...inter }}>ORO:</span>
               <span style={{ color: biasStyle(xauBias), fontSize: 10, fontWeight: 700, letterSpacing: '0.06em' }}>{xauBias.toUpperCase()}</span>
+              {termBias?.score != null && (
+                <span style={{ marginLeft: 'auto', fontSize: 9, color: '#3a4a5a', fontFamily: 'JetBrains Mono, monospace' }}>
+                  score {termBias.score >= 0 ? '+' : ''}{termBias.score.toFixed(0)}
+                </span>
+              )}
             </div>
 
             {isConnected ? (
               <p style={{ margin: '0 0 8px', fontSize: 10, color: '#7a8a9a', ...inter }}>
-                Señales y análisis generados por Economic Intelligence Terminal
+                Análisis generado por Economic Intelligence Terminal · {termBias?.events_used ?? 0} eventos USD procesados
               </p>
             ) : (
               <>
                 <p style={{ margin: '0 0 8px', fontSize: 11, color: '#e8edf2', lineHeight: 1.5 }}>{WEEKLY_PLAN.macro_bias}</p>
                 {terminalData && (
-                  <p style={{ margin: '0 0 8px', fontSize: 9, color: '#3a4a5a', ...inter }}>
-                    Usando último contexto guardado
-                  </p>
+                  <p style={{ margin: '0 0 8px', fontSize: 9, color: '#3a4a5a', ...inter }}>Usando último contexto guardado</p>
                 )}
               </>
             )}
 
-            {/* Último dato macro — actual / previsto / anterior */}
-            {lr && (
+            {/* Último dato macro (hardcoded fallback — siempre visible) */}
+            {lr && !lastRelease && (
               <div style={{ marginBottom: 8 }}>
                 <p style={{ margin: '0 0 5px', fontSize: 9, color: '#3a4a5a', textTransform: 'uppercase', letterSpacing: '0.1em', ...inter }}>
                   {lr.event} · {lr.date}
@@ -195,41 +280,62 @@ export default function Home() {
           </div>
         </div>
 
-        {/* ── Último Análisis Terminal (solo cuando conectado y hay datos) ── */}
+        {/* ── Último Release Terminal (datos reales del terminal) ─────────── */}
         {lastRelease && (
           <div style={{ background: '#111820', border: '1px solid #1a2535', borderLeft: '2px solid #00ff88' }}>
             <div style={{ padding: '7px 12px', borderBottom: '1px solid #1a2535', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <span style={{ color: '#3a4a5a', fontSize: 9, textTransform: 'uppercase', letterSpacing: '0.12em', ...inter }}>ÚLTIMO ANÁLISIS TERMINAL</span>
+              <span style={{ color: '#3a4a5a', fontSize: 9, textTransform: 'uppercase', letterSpacing: '0.12em', ...inter }}>ÚLTIMO RELEASE — TERMINAL</span>
               <span style={{ color: '#00ff88', fontSize: 9, fontWeight: 700, ...inter }}>● LIVE</span>
             </div>
             <div style={{ padding: '10px 12px' }}>
-              {/* Event name + scores */}
-              <p style={{ margin: '0 0 6px', fontSize: 11, fontWeight: 700, color: '#e8edf2' }}>{lastRelease.event_name ?? lastRelease.name}</p>
-              <div style={{ display: 'flex', gap: 12, marginBottom: 8 }}>
-                {surprisePct != null && (
-                  <span style={{ fontSize: 10, color: surprisePct >= 0 ? '#00ff88' : '#ff3355', fontWeight: 700 }}>
-                    Surprise {surprisePct >= 0 ? '+' : ''}{surprisePct.toFixed(0)}%
-                  </span>
-                )}
-                {usdScore != null && (
-                  <span style={{ fontSize: 10, color: '#7a8a9a', ...inter }}>
-                    USD <span style={{ color: usdScore >= 0 ? '#00ff88' : '#ff3355', fontWeight: 700 }}>{usdScore >= 0 ? '+' : ''}{usdScore}</span>
-                  </span>
-                )}
-                {xauScore != null && (
-                  <span style={{ fontSize: 10, color: '#7a8a9a', ...inter }}>
-                    XAU <span style={{ color: xauScore >= 0 ? '#00ff88' : '#ff3355', fontWeight: 700 }}>{xauScore >= 0 ? '+' : ''}{xauScore}</span>
-                  </span>
-                )}
+              {/* Event name + timestamp */}
+              <p style={{ margin: '0 0 2px', fontSize: 11, fontWeight: 700, color: '#e8edf2' }}>
+                {lastRelease.event_name}
+              </p>
+              <p style={{ margin: '0 0 8px', fontSize: 9, color: '#3a4a5a', ...inter }}>
+                {lastRelease.event_at ? new Date(lastRelease.event_at).toLocaleString('es', {
+                  month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit',
+                }) + ' ET' : ''}
+                {lastRelease.currency ? ` · ${lastRelease.currency}` : ''}
+              </p>
+
+              {/* Anterior / Previsto / Actual grid */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 4, marginBottom: 8 }}>
+                {[
+                  ['Anterior', lastRelease.previous, '#7a8a9a'],
+                  ['Previsto', lastRelease.forecast,  '#ffcc00'],
+                  ['Actual',   lastRelease.actual,    (lastRelease.surprise_pct ?? 0) >= 0 ? '#00ff88' : '#ff3355'],
+                ].map(([label, value, color]) => (
+                  <div key={label} style={{ textAlign: 'center', padding: '6px 4px', background: '#060a0f', border: '1px solid #1a2535' }}>
+                    <p style={{ margin: '0 0 2px', fontSize: 8, color: '#3a4a5a', textTransform: 'uppercase', letterSpacing: '0.08em', ...inter }}>{label}</p>
+                    <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color }}>
+                      {value != null ? `${value}${lastRelease.unit ?? ''}` : '—'}
+                    </p>
+                  </div>
+                ))}
               </div>
-              {/* 4-line terminal analysis */}
-              {analysis.length > 0 && (
-                <div style={{ borderLeft: '2px solid #1a2535', paddingLeft: 10 }}>
-                  {analysis.map((line, i) => (
-                    <p key={i} style={{ margin: '0 0 3px', fontSize: 10, color: '#e8edf2', lineHeight: 1.5 }}>{line}</p>
-                  ))}
-                </div>
-              )}
+
+              {/* Surprise + implied SMC direction */}
+              {lastRelease.surprise_pct != null && (() => {
+                const sp   = lastRelease.surprise_pct
+                const impl = surpriseImplication(sp)
+                const badgeColor = sp >= 3 ? '#00ff88' : sp <= -3 ? '#ff3355' : '#7a8a9a'
+                return (
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 6 }}>
+                    <span style={{ fontSize: 11, fontWeight: 700, color: badgeColor, fontFamily: 'JetBrains Mono, monospace' }}>
+                      {surpriseBadge(lastRelease.surprise_label)} {sp >= 0 ? '+' : ''}{sp.toFixed(1)}%
+                    </span>
+                    <div style={{ display: 'flex', gap: 10 }}>
+                      <span style={{ fontSize: 9, color: '#7a8a9a', ...inter }}>
+                        USD <span style={{ color: biasStyle(impl.usd), fontWeight: 700 }}>{impl.usd}</span>
+                      </span>
+                      <span style={{ fontSize: 9, color: '#7a8a9a', ...inter }}>
+                        XAU <span style={{ color: biasStyle(impl.xau), fontWeight: 700 }}>{impl.xau}</span>
+                      </span>
+                    </div>
+                  </div>
+                )
+              })()}
             </div>
           </div>
         )}
@@ -252,7 +358,7 @@ export default function Home() {
             <p style={{ margin: '0 0 8px', fontSize: 10, color: '#7a8a9a', ...inter }}>
               {isConnected ? 'Sesgo calculado por Economic Intelligence Terminal' : 'Londres 08:00–13:00 Colombia · Nueva York 13:00–18:00'}
             </p>
-            {/* BSL / EQ / SSL from WEEKLY_PLAN key levels */}
+            {/* BSL / EQ / SSL */}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 6 }}>
               {[['BSL', bsl, '#00ff88'], ['EQ', eq, '#7a8a9a'], ['SSL', ssl, '#ff3355']].map(([l, v, c]) => (
                 <div key={l} style={{ textAlign: 'center', padding: '6px', background: '#060a0f', border: '1px solid #1a2535' }}>
@@ -264,7 +370,7 @@ export default function Home() {
           </div>
         </div>
 
-        {/* ── Just-released events (from hardcoded calendar) ─ */}
+        {/* ── Just-released events ─────────────────────────── */}
         {released.length > 0 && (
           <div style={{ background: '#111820', border: '1px solid #1a2535' }}>
             <div style={{ padding: '7px 12px', borderBottom: '1px solid #1a2535' }}>
@@ -276,18 +382,19 @@ export default function Home() {
               ))}
             </div>
             {released.map(ev => {
-              const bm  = beatMiss(ev.actual, ev.forecast)
-              const isExp = expandedId === ev.id
+              const evKey = ev.id ?? `${ev.event_name}:${ev.event_at}`
+              const bm    = beatMiss(ev.actual, ev.forecast)
+              const isExp = expandedKey === evKey
               const usdDir = bm ? (bm.label.includes('▲') ? '▲' : bm.label.includes('▼') ? '▼' : '—') : '—'
-              const xauDir = bm ? (bm.label.includes('▲') ? '▲' : bm.label.includes('▼') ? '▼' : '—') : '—'
+              const xauDir2 = bm ? (bm.label.includes('▲') ? '▼' : bm.label.includes('▼') ? '▲' : '—') : '—'
               return (
-                <div key={ev.id} onClick={() => setExpandedId(isExp ? null : ev.id)}>
+                <div key={evKey} onClick={() => setExpandedKey(isExp ? null : evKey)}>
                   <div style={{ display: 'grid', gridTemplateColumns: '46px 1fr 80px 38px 38px', padding: '8px 12px', borderBottom: '1px solid #1a2535', cursor: 'pointer', alignItems: 'center' }}>
                     <span style={{ color: '#7a8a9a', fontSize: 10 }}>{localTime(ev.event_at)}</span>
                     <span style={{ color: '#e8edf2', fontSize: 10, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{ev.event_name}</span>
                     {bm ? <span style={{ color: bm.color, fontSize: 9, fontWeight: 700, letterSpacing: '0.04em' }}>{bm.label}</span> : <span />}
-                    <span style={{ color: usdDir === '▲' ? '#00ff88' : '#ff3355', fontSize: 11, textAlign: 'center' }}>{usdDir}</span>
-                    <span style={{ color: xauDir === '▲' ? '#00ff88' : '#ff3355', fontSize: 11, textAlign: 'center' }}>{xauDir}</span>
+                    <span style={{ color: usdDir === '▲' ? '#00ff88' : usdDir === '▼' ? '#ff3355' : '#3a4a5a', fontSize: 11, textAlign: 'center' }}>{usdDir}</span>
+                    <span style={{ color: xauDir2 === '▲' ? '#00ff88' : xauDir2 === '▼' ? '#ff3355' : '#3a4a5a', fontSize: 11, textAlign: 'center' }}>{xauDir2}</span>
                   </div>
                   {isExp && (
                     <div style={{ padding: '10px 12px', background: '#0d1117', borderBottom: '1px solid #1a2535' }}>
@@ -299,6 +406,12 @@ export default function Home() {
                           </div>
                         ))}
                       </div>
+                      {ev.surprise_pct != null && (
+                        <p style={{ margin: '8px 0 0', fontSize: 10, fontWeight: 700, textAlign: 'center',
+                          color: ev.surprise_pct >= 3 ? '#00ff88' : ev.surprise_pct <= -3 ? '#ff3355' : '#7a8a9a' }}>
+                          {surpriseBadge(ev.surprise_label)} {ev.surprise_pct >= 0 ? '+' : ''}{ev.surprise_pct.toFixed(1)}%
+                        </p>
+                      )}
                     </div>
                   )}
                 </div>
@@ -314,7 +427,7 @@ export default function Home() {
               <span style={{ color: '#3a4a5a', fontSize: 9, textTransform: 'uppercase', letterSpacing: '0.12em', ...inter }}>PRÓXIMOS EVENTOS</span>
             </div>
             {upcoming.map(ev => (
-              <div key={ev.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 12px', borderBottom: '1px solid #1a2535', borderLeft: ev.is_high_impact ? '2px solid #ff3355' : '2px solid transparent' }}>
+              <div key={ev.id ?? ev.event_name} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 12px', borderBottom: '1px solid #1a2535', borderLeft: ev.is_high_impact ? '2px solid #ff3355' : '2px solid transparent' }}>
                 <div style={{ minWidth: 0 }}>
                   <p style={{ margin: '0 0 1px', fontSize: 11, fontWeight: 600, color: ev.is_high_impact ? '#ff8844' : '#e8edf2', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                     {ev.is_high_impact && '⚡ '}{ev.event_name}

@@ -11,7 +11,7 @@
 export const EVENTS = [
 
   // ══ NFP MAYO — YA LIBERADO ══════════════════════════════════════════════════
-  // Miss fuerte: 139K vs 185K → bearish USD, bullish gold
+  // BEAT FUERTE: 172K vs 85K (+102%) → USD ALCISTA / XAU BAJISTA
   { id:'nfp-2026-06',      name:'Non-Farm Payrolls (May)',          date:'2026-06-05T08:30:00-04:00', importance:'high',   prev:147,  fc:85,   actual:172  },
 
   // ══ SEMANA 1 — Jun 9–13 ════════════════════════════════════════════════════
@@ -75,7 +75,7 @@ export const EVENTS = [
   { id:'jolts-2026-06',    name:'JOLTS Job Openings (May)',          date:'2026-07-01T10:00:00-04:00', importance:'medium', prev:7.19, fc:7.1,  actual:null },
 
   // Jueves 2 Jul ← NFP movido (Jul 4=Sábado → observado Vie Jul 3 = Holiday)
-  { id:'nfp-2026-07',      name:'Non-Farm Payrolls (Jun)',           date:'2026-07-02T08:30:00-04:00', importance:'high',   prev:139,  fc:160,  actual:null },
+  { id:'nfp-2026-07',      name:'Non-Farm Payrolls (Jun)',           date:'2026-07-02T08:30:00-04:00', importance:'high',   prev:172,  fc:160,  actual:null },
   { id:'claims-w4-07',     name:'Initial Jobless Claims',            date:'2026-07-02T08:30:00-04:00', importance:'medium', prev:229,  fc:225,  actual:null },
 
   // ══ SEMANA 5 — Jul 7–11 ════════════════════════════════════════════════════

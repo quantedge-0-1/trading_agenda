@@ -4,7 +4,7 @@ import { api } from '../services/terminalApi.js'
 const Ctx = createContext(null)
 export const useTerminal = () => useContext(Ctx)
 
-// Public Railway URL (set in .env.production) — falls back to localhost for dev
+// Public Railway URL (set in .env.production / Vercel dashboard) — falls back to localhost
 const TERMINAL_BASE = (import.meta.env.VITE_TERMINAL_URL || 'http://localhost:8001').replace(/\/$/, '')
 const DELAY_THRESHOLD_MS = 120_000  // 2 min → yellow badge
 
@@ -42,19 +42,23 @@ export function TerminalProvider({ children }) {
   const [terminalData, setTerminalData]     = useState(() => loadCache())
   const [lastUpdateTs, setLastUpdateTs]     = useState(null)
 
-  // Derived: connected means actually responding right now
   const connected = terminalStatus === 'connected' || terminalStatus === 'delay'
 
-  const prevPrice  = useRef(null)
-  const seenIds    = useRef(new Set())
-  const wsRef      = useRef(null)
-  const wsRetry    = useRef(null)
+  const prevPrice   = useRef(null)
+  const seenIds     = useRef(new Set())
+  const wsRef       = useRef(null)
+  const wsRetry     = useRef(null)
+
+  // Keep a ref in sync so interval callbacks always read the latest connection state
+  // without needing to be recreated (avoids stale closure in setInterval)
+  const connectedRef = useRef(false)
+  useEffect(() => { connectedRef.current = connected }, [connected])
 
   // ── Price: terminal first, Vercel Yahoo Finance fallback ──────────────────
   const fetchPrice = useCallback(async () => {
     try {
       let price = null
-      if (connected) {
+      if (connectedRef.current) {
         const data = await terminalFetch('/api/v1/prices/XAUUSD')
         price = data?.price ?? null
       } else {
@@ -71,20 +75,25 @@ export function TerminalProvider({ children }) {
     } catch {
       // Price failure is silent — keep last value
     }
-  }, [connected])
+  }, []) // stable — reads connectedRef.current at call time
 
   // ── Calendar: terminal first, Vercel serverless fallback ─────────────────
   const fetchCalendar = useCallback(async () => {
     try {
-      let upData, relData
-      if (connected) {
-        ;[upData, relData] = await Promise.all([
+      let upData = null, relData = null
+
+      if (connectedRef.current) {
+        const [upResult, relResult] = await Promise.allSettled([
           terminalFetch('/api/v1/calendar/upcoming?hours=48&currencies=USD&importance=high'),
           terminalFetch('/api/v1/calendar/recent?hours=4&currencies=USD'),
         ])
-      } else {
-        ;[upData, relData] = await Promise.all([api.upcoming(), api.released()])
+        if (upResult.status === 'fulfilled')  upData  = upResult.value
+        if (relResult.status === 'fulfilled') relData = relResult.value
       }
+
+      // Fall back to Vercel serverless if terminal didn't supply data
+      if (!upData)  upData  = await api.upcoming().catch(() => null)
+      if (!relData) relData = await api.released().catch(() => null)
 
       setUpcoming((upData?.events || []).slice(0, 5))
 
@@ -98,12 +107,12 @@ export function TerminalProvider({ children }) {
       if (firstLoad) rel.forEach(e => seenIds.current.add(e.id ?? `${e.event_name}:${e.event_at}`))
       setReleased(rel.slice(0, 3))
     } catch { /* silent */ }
-  }, [connected])
+  }, []) // stable — reads connectedRef.current at call time
 
   // ── Pre-release: from terminal when connected, Vercel otherwise ──────────
   const fetchPreRelease = useCallback(async () => {
     try {
-      if (connected) {
+      if (connectedRef.current) {
         setPreRelease(await terminalFetch('/api/v1/pre-release/status'))
       } else {
         setPreRelease(await api.preRelease())
@@ -111,7 +120,7 @@ export function TerminalProvider({ children }) {
     } catch {
       setPreRelease({ active: false })
     }
-  }, [connected])
+  }, []) // stable — reads connectedRef.current at call time
 
   // ── Terminal health + bias + live release ─────────────────────────────────
   const fetchTerminal = useCallback(async () => {
@@ -135,13 +144,7 @@ export function TerminalProvider({ children }) {
       setLastUpdateTs(now)
       setTerminalStatus('connected')
     } catch {
-      // If we had a previous successful update, check if it's stale
-      setTerminalStatus(prev => {
-        if (prev === 'connected' || prev === 'delay') {
-          return 'offline'
-        }
-        return 'offline'
-      })
+      setTerminalStatus('offline')
     }
   }, [])
 
@@ -170,7 +173,6 @@ export function TerminalProvider({ children }) {
 
     ws.onopen = () => {
       wsRef.current = ws
-      // Send a ping every 30s to keep the connection alive
       ws._pingId = setInterval(() => {
         if (ws.readyState === WebSocket.OPEN) ws.send('ping')
       }, 30_000)
@@ -182,7 +184,6 @@ export function TerminalProvider({ children }) {
         if (msg.type === 'release' && msg.event) {
           const ev = msg.event
           setPostSignal(ev)
-          // Vibrate on supported devices (Android PWA)
           if ('vibrate' in navigator) navigator.vibrate([200, 100, 200])
         }
       } catch {}
@@ -191,7 +192,6 @@ export function TerminalProvider({ children }) {
     ws.onclose = () => {
       clearInterval(ws._pingId)
       wsRef.current = null
-      // Reconnect after 10s
       wsRetry.current = setTimeout(connectWS, 10_000)
     }
 
@@ -208,9 +208,9 @@ export function TerminalProvider({ children }) {
     fetchPreRelease()
     connectWS()
 
-    const t1 = setInterval(fetchTerminal,  30_000)
-    const t2 = setInterval(fetchPrice,     30_000)
-    const t3 = setInterval(fetchCalendar,  30_000)
+    const t1 = setInterval(fetchTerminal,   30_000)
+    const t2 = setInterval(fetchPrice,      30_000)
+    const t3 = setInterval(fetchCalendar,   30_000)
     const t4 = setInterval(fetchPreRelease, 60_000)
 
     return () => {
@@ -218,7 +218,7 @@ export function TerminalProvider({ children }) {
       clearTimeout(wsRetry.current)
       if (wsRef.current) { wsRef.current.close(); wsRef.current = null }
     }
-  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [fetchTerminal, fetchPrice, fetchCalendar, fetchPreRelease, connectWS])
 
   return (
     <Ctx.Provider value={{
