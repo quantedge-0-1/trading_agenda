@@ -3,8 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useApp } from '../context/AppContext.jsx'
 import { useTerminal } from '../context/TerminalContext.jsx'
 import { WEEKLY_PLAN } from '../data/apex_data.js'
-
-const inter = { fontFamily: 'Inter, sans-serif' }
+import { inter } from '../utils/styles.js'
 
 function timeUntil(isoStr) {
   const diff = new Date(isoStr) - Date.now()

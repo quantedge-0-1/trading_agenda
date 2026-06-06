@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { useApp } from '../context/AppContext.jsx'
+import { calculateRR } from '../data/smc_data.js'
+import { inter } from '../utils/styles.js'
 
-const inter = { fontFamily: 'Inter, sans-serif' }
 const TODAY = new Date().toISOString().slice(0, 10)
 const SESSIONS  = ['Londres', 'Nueva York', 'Asiática']
 const SETUPS    = ['BSL Sweep', 'SSL Sweep', 'OB', 'FVG', 'CHoCH', 'BOS']
@@ -62,6 +63,7 @@ export default function Register() {
   const [setup,      setSetup]      = useState('')
   const [note,       setNote]       = useState(pre.note ?? '')
   const [emotion,    setEmotion]    = useState('')
+  const [formError,  setFormError]  = useState('')
 
   // Auto-calc P&L when exit price is entered
   useEffect(() => {
@@ -77,15 +79,16 @@ export default function Register() {
     if (!result) setResult(parseFloat(calc) > 0 ? 'win' : parseFloat(calc) < 0 ? 'loss' : 'breakeven')
   }, [entry, exitPrice, direction, contracts, pnlManual])
 
-  // R:R live calculation
-  const rr = (() => {
-    const e = parseFloat(entry), s = parseFloat(sl), t = parseFloat(tp)
-    if (!e || !s || !t) return null
-    return (Math.abs(t - e) / Math.abs(e - s)).toFixed(2)
-  })()
+  // R:R live calculation via shared calculateRR
+  const rrResult = calculateRR(parseFloat(entry), parseFloat(sl), parseFloat(tp))
+  const rr = rrResult?.rr_ratio ?? null
 
   function submit() {
-    if (!direction || !result) { alert('Selecciona dirección y resultado'); return }
+    if (!direction || !result) {
+      setFormError('Selecciona dirección y resultado antes de continuar')
+      return
+    }
+    setFormError('')
     const submitDate = new Date().toISOString().slice(0, 10)
     addTrade({
       date: submitDate, session, instrument: 'XAUUSD', direction,
@@ -210,6 +213,11 @@ export default function Register() {
         <SectionHeader>Nota — opcional</SectionHeader>
         <textarea rows={2} placeholder="Qué pasó. Lección rápida..." value={note} onChange={e => setNote(e.target.value)} style={{ resize: 'none', width: '100%', borderRadius: 0 }} />
 
+        {formError && (
+          <div style={{ padding: '8px 12px', background: 'rgba(255,51,85,0.08)', border: '1px solid #ff3355', borderLeft: '2px solid #ff3355' }}>
+            <span style={{ color: '#ff3355', fontSize: 11, fontWeight: 600, ...inter }}>⚠ {formError}</span>
+          </div>
+        )}
         <button className="btn-primary" onClick={submit} style={{ marginTop: 4 }}>REGISTRAR OPERACIÓN</button>
         <div style={{ height: 8 }} />
       </div>

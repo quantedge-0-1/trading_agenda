@@ -3,6 +3,7 @@ import { Routes, Route, useNavigate } from 'react-router-dom'
 import { useApp } from './context/AppContext.jsx'
 import { useTerminal } from './context/TerminalContext.jsx'
 import { RULES } from './data/apex_data.js'
+import { inter, mono } from './utils/styles.js'
 import BottomNav from './components/BottomNav.jsx'
 import Home from './pages/Home.jsx'
 import Checklist from './pages/Checklist.jsx'
@@ -90,8 +91,8 @@ export default function App() {
 
   const S = {
     divider: { width: 1, background: '#1a2535', alignSelf: 'stretch' },
-    mono: { fontFamily: 'JetBrains Mono, monospace' },
-    inter: { fontFamily: 'Inter, sans-serif' },
+    mono,
+    inter,
   }
 
   return (

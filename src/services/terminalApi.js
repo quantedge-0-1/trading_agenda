@@ -15,6 +15,4 @@ export const api = {
   upcoming:   () => get('/api/v1/calendar/upcoming'),
   released:   () => get('/api/v1/calendar/just-released'),
   preRelease: () => get('/api/v1/pre-release/status'),
-  analysis:   () => get('/api/v1/analysis/consolidated'),
-  alerts:     () => get('/api/v1/alerts/'),
 }

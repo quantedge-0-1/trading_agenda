@@ -1,8 +1,7 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { PRE_ENTRY_CHECKLIST, calculateRR } from '../data/smc_data.js'
-
-const inter = { fontFamily: 'Inter, sans-serif' }
+import { inter } from '../utils/styles.js'
 
 export default function Checklist() {
   const navigate = useNavigate()

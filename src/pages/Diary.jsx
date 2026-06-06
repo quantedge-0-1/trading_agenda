@@ -1,7 +1,6 @@
 import { useState } from 'react'
 import { useApp } from '../context/AppContext.jsx'
-
-const inter = { fontFamily: 'Inter, sans-serif' }
+import { inter } from '../utils/styles.js'
 const FILTERS = ['todo', 'semana', 'wins', 'losses']
 
 function fmtDate(iso) {
