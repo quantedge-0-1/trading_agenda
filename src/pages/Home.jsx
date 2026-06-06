@@ -57,7 +57,7 @@ export default function Home() {
   const riskColor = riskPct > 80 ? '#ff3355' : riskPct > 50 ? '#ff7700' : riskPct > 25 ? '#ffcc00' : '#00ff88'
 
   // Sesgo — usa datos del terminal si está conectado, sino WEEKLY_PLAN manual
-  const isConnected   = terminalStatus === 'connected'
+  const isConnected   = terminalStatus === 'connected' || terminalStatus === 'delay'
   const termBias      = terminalData?.sessionBias
   const usdBias       = termBias?.usd_bias      ?? WEEKLY_PLAN.usd_bias      ?? 'NEUTRAL'
   const xauBias       = termBias?.xau_bias      ?? WEEKLY_PLAN.xau_bias      ?? 'NEUTRAL'
@@ -131,8 +131,14 @@ export default function Home() {
           <div style={{ padding: '8px 12px', borderBottom: '1px solid #1a2535', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <span style={{ color: '#3a4a5a', fontSize: 9, textTransform: 'uppercase', letterSpacing: '0.12em', ...inter }}>RÉGIMEN MACRO</span>
             {/* Terminal connection badge */}
-            <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.08em', color: isConnected ? '#00ff88' : '#3a4a5a', ...inter }}>
-              {terminalStatus === 'checking' ? '◌ VERIFICANDO' : isConnected ? '● TERMINAL CONECTADA' : '○ TERMINAL OFFLINE'}
+            <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.08em',
+              color: terminalStatus === 'connected' ? '#00ff88'
+                   : terminalStatus === 'delay'     ? '#ffcc00'
+                   : '#3a4a5a', ...inter }}>
+              {terminalStatus === 'checking'  ? '◌ VERIFICANDO'
+               : terminalStatus === 'connected' ? '● TERMINAL LIVE'
+               : terminalStatus === 'delay'     ? '◐ TERMINAL DELAY'
+               : '○ TERMINAL OFFLINE'}
             </span>
           </div>
           <div style={{ padding: '10px 12px' }}>
