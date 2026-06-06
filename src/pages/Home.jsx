@@ -8,9 +8,12 @@ import { inter } from '../utils/styles.js'
 function timeUntil(isoStr) {
   const diff = new Date(isoStr) - Date.now()
   if (diff <= 0) return 'AHORA'
-  const h = Math.floor(diff / 3_600_000)
+  const d = Math.floor(diff / 86_400_000)
+  const h = Math.floor((diff % 86_400_000) / 3_600_000)
   const m = Math.floor((diff % 3_600_000) / 60_000)
-  return h > 0 ? `${h}h ${m}m` : `${m}m`
+  if (d >= 1) return `${d}d ${h}h`
+  if (h >= 1) return `${h}h ${m}m`
+  return `${m}m`
 }
 
 function localTime(isoStr) {
