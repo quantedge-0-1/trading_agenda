@@ -3,8 +3,8 @@ export const APEX_ACCOUNT = {
   id: "APEX-600588-01",
   type: "50k Tradovate Intraday Trail",
   initial_balance: 50000,
-  current_balance: 50426.72,
-  total_profit: 426.72,
+  current_balance: 50295.36,
+  total_profit: 295.36,
   profit_goal: 3000,
   max_trailing_drawdown: 2000,
   peak_balance: 51000,         // Máximo histórico alcanzado
