@@ -3,7 +3,167 @@ import { useApp } from '../context/AppContext.jsx'
 import { SESSIONS, SKILLS } from '../data/apex_data.js'
 import { inter, mono } from '../utils/styles.js'
 
-const TABS = ['MÉTRICAS', 'SESIONES', 'SETUPS']
+const TABS = ['MÉTRICAS', 'SESIONES', 'SETUPS', 'CALENDARIO']
+
+const MONTH_NAMES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre']
+const DOW = ['L','M','X','J','V','S','D']
+
+function PnlCalendar({ trades }) {
+  const today = new Date()
+  const [viewDate, setViewDate] = useState(new Date(today.getFullYear(), today.getMonth(), 1))
+
+  const year  = viewDate.getFullYear()
+  const month = viewDate.getMonth()
+
+  // Group trades by date → { date: { pnl, count, result } }
+  const dailyMap = {}
+  trades.forEach(t => {
+    if (!t.date) return
+    if (!dailyMap[t.date]) dailyMap[t.date] = { pnl: 0, count: 0 }
+    dailyMap[t.date].pnl   += t.pnl || 0
+    dailyMap[t.date].count += 1
+  })
+
+  // Calendar grid
+  const firstDow = (new Date(year, month, 1).getDay() + 6) % 7 // 0=Mon
+  const daysInMonth = new Date(year, month + 1, 0).getDate()
+  const cells = []
+  for (let i = 0; i < firstDow; i++) cells.push(null)
+  for (let d = 1; d <= daysInMonth; d++) cells.push(d)
+  while (cells.length % 7 !== 0) cells.push(null)
+
+  function dayColor(d) {
+    if (!d) return 'transparent'
+    const key = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`
+    const data = dailyMap[key]
+    if (!data) return '#111820'
+    if (data.pnl > 0)  return 'rgba(0,255,136,0.18)'
+    if (data.pnl < 0)  return 'rgba(255,51,85,0.18)'
+    return 'rgba(255,204,0,0.15)'
+  }
+
+  function dayBorder(d) {
+    if (!d) return '1px solid transparent'
+    const key = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`
+    const data = dailyMap[key]
+    if (!data) return '1px solid #1a2535'
+    if (data.pnl > 0)  return '1px solid #00ff88'
+    if (data.pnl < 0)  return '1px solid #ff3355'
+    return '1px solid #ffcc00'
+  }
+
+  function dayPnL(d) {
+    if (!d) return null
+    const key = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`
+    return dailyMap[key] ?? null
+  }
+
+  const isToday = (d) => d && year === today.getFullYear() && month === today.getMonth() && d === today.getDate()
+
+  // Month totals
+  const monthTrades = trades.filter(t => t.date?.startsWith(`${year}-${String(month + 1).padStart(2, '0')}`))
+  const monthPnL    = monthTrades.reduce((s, t) => s + (t.pnl || 0), 0)
+  const tradingDays = new Set(monthTrades.map(t => t.date)).size
+
+  function prevMonth() { setViewDate(new Date(year, month - 1, 1)) }
+  function nextMonth() { setViewDate(new Date(year, month + 1, 1)) }
+  const canNext = new Date(year, month + 1, 1) <= new Date(today.getFullYear(), today.getMonth(), 1)
+
+  return (
+    <>
+      {/* Month header */}
+      <div style={{ background: '#111820', border: '1px solid #1a2535' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '9px 12px', borderBottom: '1px solid #1a2535' }}>
+          <button onClick={prevMonth} style={{ background: 'none', border: 'none', color: '#7a8a9a', fontSize: 14, cursor: 'pointer', padding: '0 4px', fontFamily: 'inherit' }}>‹</button>
+          <span style={{ color: '#e8edf2', fontSize: 12, fontWeight: 700, letterSpacing: '0.06em' }}>
+            {MONTH_NAMES[month]} {year}
+          </span>
+          <button onClick={nextMonth} disabled={!canNext} style={{ background: 'none', border: 'none', color: canNext ? '#7a8a9a' : '#1a2535', fontSize: 14, cursor: canNext ? 'pointer' : 'default', padding: '0 4px', fontFamily: 'inherit' }}>›</button>
+        </div>
+
+        {/* DOW headers */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7,1fr)', borderBottom: '1px solid #1a2535' }}>
+          {DOW.map(d => (
+            <div key={d} style={{ padding: '5px 0', textAlign: 'center' }}>
+              <span style={{ fontSize: 8, color: '#3a4a5a', textTransform: 'uppercase', letterSpacing: '0.1em', ...inter }}>{d}</span>
+            </div>
+          ))}
+        </div>
+
+        {/* Day grid */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7,1fr)', gap: 2, padding: 6 }}>
+          {cells.map((d, i) => {
+            const data = dayPnL(d)
+            return (
+              <div key={i} style={{
+                background: dayColor(d),
+                border: isToday(d) ? '1px solid #00ff88' : dayBorder(d),
+                minHeight: 38,
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                justifyContent: 'center',
+                padding: '3px 1px',
+                position: 'relative',
+              }}>
+                {d && (
+                  <>
+                    <span style={{
+                      fontSize: 10, fontWeight: isToday(d) ? 700 : 400,
+                      color: isToday(d) ? '#00ff88' : data ? '#e8edf2' : '#3a4a5a',
+                      lineHeight: 1, ...mono,
+                    }}>{d}</span>
+                    {data && (
+                      <span style={{
+                        fontSize: 7, fontWeight: 700, marginTop: 2,
+                        color: data.pnl > 0 ? '#00ff88' : data.pnl < 0 ? '#ff3355' : '#ffcc00',
+                        ...mono,
+                      }}>
+                        {data.pnl > 0 ? '+' : ''}{data.pnl.toFixed(0)}
+                      </span>
+                    )}
+                  </>
+                )}
+              </div>
+            )
+          })}
+        </div>
+      </div>
+
+      {/* Month summary */}
+      <div style={{ background: '#111820', border: '1px solid #1a2535' }}>
+        <div style={{ display: 'flex' }}>
+          <div style={{ flex: 1, padding: '10px 12px', textAlign: 'center', borderRight: '1px solid #1a2535' }}>
+            <p style={{ margin: '0 0 3px', fontSize: 8, color: '#3a4a5a', textTransform: 'uppercase', letterSpacing: '0.1em', ...inter }}>P&L del mes</p>
+            <p style={{ margin: 0, fontSize: 18, fontWeight: 700, color: monthPnL >= 0 ? '#00ff88' : '#ff3355', ...mono }}>
+              {monthPnL >= 0 ? '+' : ''}${monthPnL.toFixed(0)}
+            </p>
+          </div>
+          <div style={{ flex: 1, padding: '10px 12px', textAlign: 'center', borderRight: '1px solid #1a2535' }}>
+            <p style={{ margin: '0 0 3px', fontSize: 8, color: '#3a4a5a', textTransform: 'uppercase', letterSpacing: '0.1em', ...inter }}>Días operados</p>
+            <p style={{ margin: 0, fontSize: 18, fontWeight: 700, color: '#e8edf2', ...mono }}>{tradingDays}</p>
+          </div>
+          <div style={{ flex: 1, padding: '10px 12px', textAlign: 'center' }}>
+            <p style={{ margin: '0 0 3px', fontSize: 8, color: '#3a4a5a', textTransform: 'uppercase', letterSpacing: '0.1em', ...inter }}>Operaciones</p>
+            <p style={{ margin: 0, fontSize: 18, fontWeight: 700, color: '#e8edf2', ...mono }}>{monthTrades.length}</p>
+          </div>
+        </div>
+      </div>
+
+      {/* Legend */}
+      <div style={{ background: '#111820', border: '1px solid #1a2535', padding: '8px 12px' }}>
+        <div style={{ display: 'flex', gap: 12, justifyContent: 'center', alignItems: 'center' }}>
+          {[['#00ff88','Ganancia'],['#ff3355','Pérdida'],['#ffcc00','Breakeven'],['#1a2535','Sin trades']].map(([c, l]) => (
+            <div key={l} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+              <div style={{ width: 8, height: 8, background: c === '#1a2535' ? '#111820' : c + '44', border: `1px solid ${c}` }} />
+              <span style={{ fontSize: 8, color: '#3a4a5a', ...inter }}>{l}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+    </>
+  )
+}
 
 const skillColors = { green: '#00ff88', yellow: '#ffcc00', red: '#ff3355' }
 
@@ -409,6 +569,9 @@ export default function Progress() {
             })()}
           </>
         )}
+
+        {/* ══════════ TAB: CALENDARIO ════════════════════════ */}
+        {tab === 'CALENDARIO' && <PnlCalendar trades={trades} />}
 
         <div style={{ height: 4 }} />
       </div>
