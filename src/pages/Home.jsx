@@ -65,6 +65,7 @@ export default function Home() {
   const biasBarPct    = sessionBias === 'BAJISTA' ? 30 : sessionBias === 'ALCISTA' ? 70 : 50
   const biasColor     = biasStyle(sessionBias)
 
+  const lr     = WEEKLY_PLAN.last_release
   const levels = WEEKLY_PLAN.key_levels?.XAUUSD
   const bsl = levels?.resistance?.[0] ?? 4390
   const ssl = levels?.support?.[0]    ?? 4320
@@ -145,18 +146,39 @@ export default function Home() {
             </div>
 
             {isConnected ? (
-              <p style={{ margin: '0 0 4px', fontSize: 10, color: '#7a8a9a', ...inter }}>
+              <p style={{ margin: '0 0 8px', fontSize: 10, color: '#7a8a9a', ...inter }}>
                 Señales y análisis generados por Economic Intelligence Terminal
               </p>
             ) : (
               <>
-                <p style={{ margin: '0 0 4px', fontSize: 11, color: '#e8edf2', lineHeight: 1.5 }}>{WEEKLY_PLAN.macro_bias}</p>
+                <p style={{ margin: '0 0 8px', fontSize: 11, color: '#e8edf2', lineHeight: 1.5 }}>{WEEKLY_PLAN.macro_bias}</p>
                 {terminalData && (
-                  <p style={{ margin: '0 0 4px', fontSize: 9, color: '#3a4a5a', ...inter }}>
+                  <p style={{ margin: '0 0 8px', fontSize: 9, color: '#3a4a5a', ...inter }}>
                     Usando último contexto guardado
                   </p>
                 )}
               </>
+            )}
+
+            {/* Último dato macro — actual / previsto / anterior */}
+            {lr && (
+              <div style={{ marginBottom: 8 }}>
+                <p style={{ margin: '0 0 5px', fontSize: 9, color: '#3a4a5a', textTransform: 'uppercase', letterSpacing: '0.1em', ...inter }}>
+                  {lr.event} · {lr.date}
+                </p>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 4 }}>
+                  {[
+                    ['Anterior', lr.previous, '#7a8a9a'],
+                    ['Previsto', lr.forecast, '#ffcc00'],
+                    ['Actual',   lr.actual,   lr.actual > lr.forecast ? '#00ff88' : '#ff3355'],
+                  ].map(([label, value, color]) => (
+                    <div key={label} style={{ textAlign: 'center', padding: '6px 4px', background: '#060a0f', border: '1px solid #1a2535' }}>
+                      <p style={{ margin: '0 0 2px', fontSize: 8, color: '#3a4a5a', textTransform: 'uppercase', letterSpacing: '0.08em', ...inter }}>{label}</p>
+                      <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color }}>{value}{lr.unit}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
             )}
 
             {WEEKLY_PLAN.high_impact_events?.[0] && (

@@ -172,6 +172,16 @@ export const WEEKLY_PLAN = {
 
   macro_bias: "NFP Mayo BEAT fuerte (172K vs 85K, +102%). USD alcista — mercado descarta recortes Fed. Oro bajo presión bajista estructural. Buscar SHORTs en retrocesos.",
 
+  // Último dato macro relevante — el trader actualiza esto cada semana
+  last_release: {
+    event:    "Non-Farm Payrolls (May)",
+    date:     "Jun 6, 2026",
+    actual:   172,
+    forecast: 85,
+    previous: 147,
+    unit:     "K",
+  },
+
   key_levels: {
     XAUUSD: {
       resistance: [4390, 4420, 4455],
