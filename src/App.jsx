@@ -13,6 +13,7 @@ import Learn from './pages/Learn.jsx'
 import Rules from './pages/Rules.jsx'
 import Weekly from './pages/Weekly.jsx'
 import Progress from './pages/Progress.jsx'
+import Sizer from './pages/Sizer.jsx'
 
 function getSession() {
   const h = new Date().getUTCHours()
@@ -141,6 +142,7 @@ export default function App() {
           <Route path="/rules"     element={<Rules />} />
           <Route path="/weekly"    element={<Weekly />} />
           <Route path="/progress"  element={<Progress />} />
+          <Route path="/sizer"     element={<Sizer />} />
         </Routes>
       </div>
 

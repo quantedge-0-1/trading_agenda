@@ -5,6 +5,7 @@ import { inter } from '../utils/styles.js'
 
 export default function Checklist() {
   const navigate = useNavigate()
+
   const [checked, setChecked] = useState({})
   const [entry, setEntry] = useState('')
   const [stop,  setStop]  = useState('')
@@ -145,6 +146,13 @@ export default function Checklist() {
         )}
 
         <button className="btn-secondary" onClick={reset} style={{ fontSize: 10 }}>REINICIAR CHECKLIST</button>
+
+        <button
+          onClick={() => navigate('/learn')}
+          style={{ background: 'none', border: 'none', color: '#3a4a5a', fontSize: 10, fontFamily: 'inherit', cursor: 'pointer', textDecoration: 'underline', letterSpacing: '0.06em', padding: '4px 0', ...inter }}
+        >
+          Referencia SMC / Glosario →
+        </button>
         <div style={{ height: 4 }} />
       </div>
     </div>

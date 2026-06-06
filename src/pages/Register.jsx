@@ -3,6 +3,7 @@ import { useNavigate, useLocation } from 'react-router-dom'
 import { useApp } from '../context/AppContext.jsx'
 import { calculateRR } from '../data/smc_data.js'
 import { inter } from '../utils/styles.js'
+import { useToast } from '../context/ToastContext.jsx'
 
 const TODAY = new Date().toISOString().slice(0, 10)
 const SESSIONS  = ['Londres', 'Nueva York', 'Asiática']
@@ -48,6 +49,7 @@ export default function Register() {
   const navigate  = useNavigate()
   const location  = useLocation()
   const { addTrade } = useApp()
+  const { addToast } = useToast()
   const pre = location.state?.prefill ?? {}
 
   const [direction,  setDirection]  = useState(pre.direction  ?? '')
@@ -104,6 +106,7 @@ export default function Register() {
       lesson: note,
       checklist_passed: false,
     })
+    addToast('Operación registrada correctamente', 'success')
     navigate('/diary')
   }
 
