@@ -125,7 +125,7 @@ export function TerminalProvider({ children }) {
   // ── Terminal health + bias + live release ─────────────────────────────────
   const fetchTerminal = useCallback(async () => {
     try {
-      await terminalFetch('/health', 3000)
+      await terminalFetch('/health', 8000)
 
       const [biasRes, newsRes] = await Promise.allSettled([
         terminalFetch('/api/v1/market/session-bias'),
