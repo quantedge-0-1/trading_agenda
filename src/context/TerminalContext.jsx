@@ -22,11 +22,15 @@ function loadCache() {
 }
 
 async function terminalFetch(path, timeoutMs = 5000) {
-  const res = await fetch(`${TERMINAL_BASE}${path}`, {
-    signal: AbortSignal.timeout(timeoutMs),
-  })
-  if (!res.ok) throw new Error(`${res.status}`)
-  return res.json()
+  const controller = new AbortController()
+  const timer = setTimeout(() => controller.abort(), timeoutMs)
+  try {
+    const res = await fetch(`${TERMINAL_BASE}${path}`, { signal: controller.signal })
+    if (!res.ok) throw new Error(`${res.status}`)
+    return res.json()
+  } finally {
+    clearTimeout(timer)
+  }
 }
 
 export function TerminalProvider({ children }) {
