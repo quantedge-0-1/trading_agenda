@@ -136,9 +136,9 @@ export default function Register() {
 
   return (
     <div className="page">
-      <div style={{ padding: '10px 14px 9px', borderBottom: '1px solid #1a2535', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+      <div style={{ padding: '10px 14px 9px', borderBottom: `1px solid ${editId ? '#0088ff40' : '#1a2535'}`, background: editId ? 'rgba(0,136,255,0.06)' : 'transparent', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div>
-          <p style={{ color: '#3a4a5a', fontSize: 9, textTransform: 'uppercase', letterSpacing: '0.14em', margin: '0 0 2px', ...inter }}>XAUUSD · {TODAY}</p>
+          <p style={{ color: editId ? '#0088ff' : '#3a4a5a', fontSize: 9, textTransform: 'uppercase', letterSpacing: '0.14em', margin: '0 0 2px', ...inter }}>{editId ? 'MODO EDICIÓN' : `XAUUSD · ${TODAY}`}</p>
           <p style={{ color: '#e8edf2', fontSize: 13, fontWeight: 700, margin: 0, letterSpacing: '0.04em' }}>{editId ? 'EDITAR OPERACIÓN' : 'EXECUTION LOG'}</p>
         </div>
         <button onClick={() => navigate(-1)} style={{ background: 'none', border: '1px solid #1a2535', color: '#7a8a9a', padding: '4px 10px', fontSize: 10, fontFamily: 'inherit', cursor: 'pointer', ...inter, letterSpacing: '0.06em' }}>← BACK</button>
@@ -242,7 +242,17 @@ export default function Register() {
             <span style={{ color: '#ff3355', fontSize: 11, fontWeight: 600, ...inter }}>⚠ {formError}</span>
           </div>
         )}
-        <button className="btn-primary" onClick={submit} style={{ marginTop: 4 }}>{editId ? 'ACTUALIZAR OPERACIÓN' : 'REGISTRAR OPERACIÓN'}</button>
+        <button
+          onClick={submit}
+          style={{
+            marginTop: 4, width: '100%', padding: '14px 0',
+            background: editId ? 'rgba(0,136,255,0.15)' : 'rgba(0,255,136,0.1)',
+            border: `1px solid ${editId ? '#0088ff' : '#00ff88'}`,
+            color: editId ? '#0088ff' : '#00ff88',
+            fontSize: 13, fontWeight: 700, fontFamily: 'inherit',
+            cursor: 'pointer', letterSpacing: '0.08em',
+          }}
+        >{editId ? 'GUARDAR CAMBIOS' : 'REGISTRAR OPERACIÓN'}</button>
         <div style={{ height: 8 }} />
       </div>
     </div>

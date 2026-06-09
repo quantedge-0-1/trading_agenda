@@ -19,14 +19,19 @@ function save(key, value) {
 }
 
 export function AppProvider({ children }) {
-  // Trades — merge preloaded + stored (dedup by id)
+  // Trades — stored takes priority over TRADE_LOG so edits/deletes persist
   const [trades, setTrades] = useState(() => {
-    const stored = load('trades', [])
-    const merged = [...TRADE_LOG]
-    stored.forEach(t => {
-      if (!merged.find(m => m.id === t.id)) merged.push(t)
-    })
-    return merged.sort((a, b) => new Date(b.date) - new Date(a.date))
+    const stored = load('trades', null)
+    if (stored) {
+      // Hydrate from localStorage: add TRADE_LOG entries not yet stored
+      const merged = stored.slice()
+      TRADE_LOG.forEach(t => {
+        if (!merged.find(m => m.id === t.id)) merged.push(t)
+      })
+      return merged.sort((a, b) => new Date(b.date) - new Date(a.date))
+    }
+    // First run — seed from TRADE_LOG
+    return [...TRADE_LOG].sort((a, b) => new Date(b.date) - new Date(a.date))
   })
 
   // Daily P&L — seed from preloaded trades when no localStorage value exists for today
@@ -63,10 +68,9 @@ export function AppProvider({ children }) {
   const todayTrades = trades.filter(t => t.date === TODAY)
   const todayPnL = dailyPnL
 
-  // Save trades to localStorage whenever they change (only non-preloaded ones)
+  // Save all trades — includes TRADE_LOG entries so edits/deletes persist across sessions
   useEffect(() => {
-    const toStore = trades.filter(t => !TRADE_LOG.find(p => p.id === t.id))
-    save('trades', toStore)
+    save('trades', trades)
   }, [trades])
 
   useEffect(() => {
@@ -103,6 +107,15 @@ export function AppProvider({ children }) {
     }
   }
 
+  function deleteTrade(id) {
+    const existing = trades.find(t => t.id === id)
+    if (!existing) return
+    setTrades(prev => prev.filter(t => t.id !== id))
+    if (existing.date === TODAY) {
+      setDailyPnL(prev => prev - (existing.pnl || 0))
+    }
+  }
+
   function toggleRule(ruleId) {
     setRulesChecked(prev =>
       prev.includes(ruleId) ? prev.filter(id => id !== ruleId) : [...prev, ruleId]
@@ -133,6 +146,7 @@ export function AppProvider({ children }) {
       trades,
       addTrade,
       updateTrade,
+      deleteTrade,
       todayTrades,
       todayPnL,
       setDailyPnL,

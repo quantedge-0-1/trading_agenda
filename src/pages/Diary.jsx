@@ -45,11 +45,12 @@ function fmt(n) { return (n >= 0 ? '+' : '') + Number(n).toFixed(0) }
 function fmtFull(n) { return (n >= 0 ? '+' : '') + Number(n).toFixed(2) }
 
 export default function Diary() {
-  const { trades } = useApp()
+  const { trades, deleteTrade } = useApp()
   const { addToast } = useToast()
   const navigate = useNavigate()
   const [filter, setFilter] = useState('todo')
   const [expanded, setExpanded] = useState(null)
+  const [deleteConfirm, setDeleteConfirm] = useState(null)
 
   function exportCSV() {
     if (trades.length === 0) { addToast('No hay operaciones para exportar', 'warning'); return }
@@ -204,37 +205,58 @@ export default function Diary() {
                       )}
                       {t.what_went_right && <p style={{ margin: '4px 0 0', fontSize: 10, color: '#00ff88' }}>✓ {t.what_went_right}</p>}
                       {t.what_to_improve && <p style={{ margin: '2px 0 0', fontSize: 10, color: '#ffcc00' }}>△ {t.what_to_improve}</p>}
-                      <button
-                        onClick={e => {
-                          e.stopPropagation()
-                          navigate('/register', {
-                            state: {
-                              editId: t.id,
-                              prefill: {
-                                direction:  t.direction         ?? '',
-                                session:    t.session           ?? '',
-                                entry:      t.entry_price != null ? String(t.entry_price) : '',
-                                sl:         t.stop_loss   != null ? String(t.stop_loss)   : '',
-                                tp:         t.take_profit != null ? String(t.take_profit) : '',
-                                exitPrice:  t.result_price != null ? String(t.result_price) : '',
-                                contracts:  t.contracts   != null ? String(t.contracts)   : '1',
-                                pnl:        t.pnl         != null ? t.pnl                 : '',
-                                result:     t.result          ?? '',
-                                setup:      t.setup?.entry_zone ?? '',
-                                note:       t.lesson            ?? '',
-                                emotion:    t.emotion_before    ?? '',
-                              },
-                            },
-                          })
-                        }}
-                        style={{
-                          marginTop: 10, width: '100%', padding: '8px 0',
-                          background: 'none', border: '1px solid #1a2535',
-                          color: '#7a8a9a', fontSize: 10, fontFamily: 'inherit',
-                          cursor: 'pointer', letterSpacing: '0.08em',
-                          textTransform: 'uppercase', ...inter,
-                        }}
-                      >EDITAR OPERACIÓN</button>
+
+                      {/* Action buttons */}
+                      {deleteConfirm === t.id ? (
+                        <div style={{ display: 'flex', gap: 6, marginTop: 10 }}>
+                          <button
+                            onClick={e => {
+                              e.stopPropagation()
+                              deleteTrade(t.id)
+                              setExpanded(null)
+                              setDeleteConfirm(null)
+                              addToast('Operación eliminada', 'warning')
+                            }}
+                            style={{ flex: 1, padding: '9px 0', background: 'rgba(255,51,85,0.12)', border: '1px solid #ff3355', color: '#ff3355', fontSize: 11, fontWeight: 700, fontFamily: 'inherit', cursor: 'pointer', letterSpacing: '0.06em', ...inter }}
+                          >CONFIRMAR</button>
+                          <button
+                            onClick={e => { e.stopPropagation(); setDeleteConfirm(null) }}
+                            style={{ flex: 1, padding: '9px 0', background: 'none', border: '1px solid #1a2535', color: '#7a8a9a', fontSize: 11, fontFamily: 'inherit', cursor: 'pointer', letterSpacing: '0.06em', ...inter }}
+                          >CANCELAR</button>
+                        </div>
+                      ) : (
+                        <div style={{ display: 'flex', gap: 6, marginTop: 10 }}>
+                          <button
+                            onClick={e => {
+                              e.stopPropagation()
+                              navigate('/register', {
+                                state: {
+                                  editId: t.id,
+                                  prefill: {
+                                    direction: t.direction          ?? '',
+                                    session:   t.session            ?? '',
+                                    entry:     t.entry_price  != null ? String(t.entry_price)  : '',
+                                    sl:        t.stop_loss    != null ? String(t.stop_loss)    : '',
+                                    tp:        t.take_profit  != null ? String(t.take_profit)  : '',
+                                    exitPrice: t.result_price != null ? String(t.result_price) : '',
+                                    contracts: t.contracts    != null ? String(t.contracts)    : '1',
+                                    pnl:       t.pnl          != null ? t.pnl                  : '',
+                                    result:    t.result           ?? '',
+                                    setup:     t.setup?.entry_zone ?? '',
+                                    note:      t.lesson            ?? '',
+                                    emotion:   t.emotion_before    ?? '',
+                                  },
+                                },
+                              })
+                            }}
+                            style={{ flex: 2, padding: '9px 0', background: 'rgba(0,136,255,0.08)', border: '1px solid #0088ff', color: '#0088ff', fontSize: 11, fontWeight: 700, fontFamily: 'inherit', cursor: 'pointer', letterSpacing: '0.06em', ...inter }}
+                          >EDITAR</button>
+                          <button
+                            onClick={e => { e.stopPropagation(); setDeleteConfirm(t.id) }}
+                            style={{ flex: 1, padding: '9px 0', background: 'none', border: '1px solid #ff3355', color: '#ff3355', fontSize: 11, fontFamily: 'inherit', cursor: 'pointer', letterSpacing: '0.06em', ...inter }}
+                          >ELIMINAR</button>
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
