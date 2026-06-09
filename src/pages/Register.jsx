@@ -48,23 +48,24 @@ function Chip({ label, active, onClick, color = '#00ff88' }) {
 export default function Register() {
   const navigate  = useNavigate()
   const location  = useLocation()
-  const { addTrade } = useApp()
+  const { addTrade, updateTrade } = useApp()
   const { addToast } = useToast()
-  const pre = location.state?.prefill ?? {}
+  const pre    = location.state?.prefill ?? {}
+  const editId = location.state?.editId  ?? null
 
   const [direction,  setDirection]  = useState(pre.direction  ?? '')
   const [session,    setSession]    = useState(pre.session    ?? '')
   const [entry,      setEntry]      = useState(pre.entry      ?? '')
   const [sl,         setSl]         = useState(pre.sl         ?? '')
   const [tp,         setTp]         = useState(pre.tp         ?? '')
-  const [exitPrice,  setExitPrice]  = useState('')
-  const [contracts,  setContracts]  = useState('1')
-  const [pnl,        setPnl]        = useState('')
-  const [pnlManual,  setPnlManual]  = useState(false)
-  const [result,     setResult]     = useState('')
-  const [setup,      setSetup]      = useState('')
-  const [note,       setNote]       = useState(pre.note ?? '')
-  const [emotion,    setEmotion]    = useState('')
+  const [exitPrice,  setExitPrice]  = useState(pre.exitPrice  ?? '')
+  const [contracts,  setContracts]  = useState(pre.contracts  ?? '1')
+  const [pnl,        setPnl]        = useState(pre.pnl != null ? String(pre.pnl) : '')
+  const [pnlManual,  setPnlManual]  = useState(pre.pnl != null && !pre.exitPrice)
+  const [result,     setResult]     = useState(pre.result     ?? '')
+  const [setup,      setSetup]      = useState(pre.setup      ?? '')
+  const [note,       setNote]       = useState(pre.note       ?? '')
+  const [emotion,    setEmotion]    = useState(pre.emotion    ?? '')
   const [formError,  setFormError]  = useState('')
 
   // Auto-calc P&L when exit price is entered
@@ -81,6 +82,21 @@ export default function Register() {
     if (!result) setResult(parseFloat(calc) > 0 ? 'win' : parseFloat(calc) < 0 ? 'loss' : 'breakeven')
   }, [entry, exitPrice, direction, contracts, pnlManual])
 
+  // Auto-calc P&L from result + TP/SL when exit price is not entered
+  useEffect(() => {
+    if (pnlManual || exitPrice) return
+    const e = parseFloat(entry)
+    const c = parseFloat(contracts) || 1
+    if (!e || !direction || !result) { setPnl(''); return }
+    let inferredExit = null
+    if (result === 'win')       inferredExit = parseFloat(tp) || null
+    if (result === 'loss')      inferredExit = parseFloat(sl) || null
+    if (result === 'breakeven') inferredExit = e
+    if (!inferredExit) { setPnl(''); return }
+    const pts = direction === 'LONG' ? inferredExit - e : e - inferredExit
+    setPnl((pts * MGC_PTS * c).toFixed(2))
+  }, [result, entry, tp, sl, direction, contracts, pnlManual, exitPrice])
+
   // R:R live calculation via shared calculateRR
   const rrResult = calculateRR(parseFloat(entry), parseFloat(sl), parseFloat(tp))
   const rr = rrResult?.rr_ratio ?? null
@@ -91,22 +107,27 @@ export default function Register() {
       return
     }
     setFormError('')
-    const submitDate = new Date().toISOString().slice(0, 10)
-    addTrade({
-      date: submitDate, session, instrument: 'XAUUSD', direction,
-      entry_price: parseFloat(entry) || null,
-      stop_loss:   parseFloat(sl)    || null,
-      take_profit: parseFloat(tp)    || null,
-      result_price: parseFloat(exitPrice) || null,
-      pnl:         parseFloat(pnl)   || 0,
-      rr_planned:  rr ? parseFloat(rr) : null,
+    const fields = {
+      session, instrument: 'XAUUSD', direction,
+      entry_price:   parseFloat(entry)     || null,
+      stop_loss:     parseFloat(sl)        || null,
+      take_profit:   parseFloat(tp)        || null,
+      result_price:  parseFloat(exitPrice) || null,
+      pnl:           parseFloat(pnl)       || 0,
+      rr_planned:    rr ? parseFloat(rr)  : null,
       result,
-      setup: { entry_zone: setup },
+      setup:          { entry_zone: setup },
       emotion_before: emotion,
-      lesson: note,
+      lesson:         note,
       checklist_passed: false,
-    })
-    addToast('Operación registrada correctamente', 'success')
+    }
+    if (editId) {
+      updateTrade(editId, fields)
+      addToast('Operación actualizada', 'success')
+    } else {
+      addTrade({ ...fields, date: new Date().toISOString().slice(0, 10) })
+      addToast('Operación registrada correctamente', 'success')
+    }
     navigate('/diary')
   }
 
@@ -118,7 +139,7 @@ export default function Register() {
       <div style={{ padding: '10px 14px 9px', borderBottom: '1px solid #1a2535', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div>
           <p style={{ color: '#3a4a5a', fontSize: 9, textTransform: 'uppercase', letterSpacing: '0.14em', margin: '0 0 2px', ...inter }}>XAUUSD · {TODAY}</p>
-          <p style={{ color: '#e8edf2', fontSize: 13, fontWeight: 700, margin: 0, letterSpacing: '0.04em' }}>EXECUTION LOG</p>
+          <p style={{ color: '#e8edf2', fontSize: 13, fontWeight: 700, margin: 0, letterSpacing: '0.04em' }}>{editId ? 'EDITAR OPERACIÓN' : 'EXECUTION LOG'}</p>
         </div>
         <button onClick={() => navigate(-1)} style={{ background: 'none', border: '1px solid #1a2535', color: '#7a8a9a', padding: '4px 10px', fontSize: 10, fontFamily: 'inherit', cursor: 'pointer', ...inter, letterSpacing: '0.06em' }}>← BACK</button>
       </div>
@@ -221,7 +242,7 @@ export default function Register() {
             <span style={{ color: '#ff3355', fontSize: 11, fontWeight: 600, ...inter }}>⚠ {formError}</span>
           </div>
         )}
-        <button className="btn-primary" onClick={submit} style={{ marginTop: 4 }}>REGISTRAR OPERACIÓN</button>
+        <button className="btn-primary" onClick={submit} style={{ marginTop: 4 }}>{editId ? 'ACTUALIZAR OPERACIÓN' : 'REGISTRAR OPERACIÓN'}</button>
         <div style={{ height: 8 }} />
       </div>
     </div>

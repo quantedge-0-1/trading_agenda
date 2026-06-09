@@ -88,11 +88,19 @@ export function AppProvider({ children }) {
       date: trade.date || TODAY,
     }
     setTrades(prev => [newTrade, ...prev])
-    // Update daily P&L
     if (trade.date === TODAY || !trade.date) {
       setDailyPnL(prev => prev + (Number(trade.pnl) || 0))
     }
     return newTrade
+  }
+
+  function updateTrade(id, updates) {
+    const existing = trades.find(t => t.id === id)
+    if (!existing) return
+    setTrades(prev => prev.map(t => t.id === id ? { ...t, ...updates } : t))
+    if (existing.date === TODAY && updates.pnl !== undefined) {
+      setDailyPnL(prev => prev - (existing.pnl || 0) + (Number(updates.pnl) || 0))
+    }
   }
 
   function toggleRule(ruleId) {
@@ -124,6 +132,7 @@ export function AppProvider({ children }) {
     <AppContext.Provider value={{
       trades,
       addTrade,
+      updateTrade,
       todayTrades,
       todayPnL,
       setDailyPnL,
