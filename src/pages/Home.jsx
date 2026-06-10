@@ -95,7 +95,6 @@ export default function Home() {
   const biasColor     = biasStyle(sessionBias)
   const currentSession = termBias?.session ?? null  // LONDON | NEW_YORK | TOKYO | OFF
 
-  const lr     = WEEKLY_PLAN.last_release
   const levels = WEEKLY_PLAN.key_levels?.XAUUSD
   const bsl = levels?.resistance?.[0] ?? 4390
   const ssl = levels?.support?.[0]    ?? 4320
@@ -259,30 +258,9 @@ export default function Home() {
               </>
             )}
 
-            {/* Último dato macro (hardcoded fallback — siempre visible) */}
-            {lr && !lastRelease && (
-              <div style={{ marginBottom: 8 }}>
-                <p style={{ margin: '0 0 5px', fontSize: 9, color: '#3a4a5a', textTransform: 'uppercase', letterSpacing: '0.1em', ...inter }}>
-                  {lr.event} · {lr.date}
-                </p>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 4 }}>
-                  {[
-                    ['Anterior', lr.previous, '#7a8a9a'],
-                    ['Previsto', lr.forecast, '#ffcc00'],
-                    ['Actual',   lr.actual,   lr.actual > lr.forecast ? '#00ff88' : '#ff3355'],
-                  ].map(([label, value, color]) => (
-                    <div key={label} style={{ textAlign: 'center', padding: '6px 4px', background: '#060a0f', border: '1px solid #1a2535' }}>
-                      <p style={{ margin: '0 0 2px', fontSize: 8, color: '#3a4a5a', textTransform: 'uppercase', letterSpacing: '0.08em', ...inter }}>{label}</p>
-                      <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color }}>{value}{lr.unit}</p>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {WEEKLY_PLAN.high_impact_events?.[0] && (
+            {upcoming.length > 0 && (
               <p style={{ margin: 0, fontSize: 10, color: '#ffcc00', ...inter }}>
-                Próx. catalizador: {WEEKLY_PLAN.high_impact_events[0].day} — {WEEKLY_PLAN.high_impact_events[0].event}
+                Próx. catalizador: {new Date(upcoming[0].event_at).toLocaleDateString('es', { weekday: 'long', day: 'numeric', month: 'short' })} — {upcoming[0].event_name} {localTime(upcoming[0].event_at)} — No operar 15 min antes
               </p>
             )}
           </div>
